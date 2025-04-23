@@ -22,14 +22,37 @@
    "outputs": [],
    "source": [
     "from SCMeTA import Process\n",
+    "import os\n",
+    "\n",
+    "sc = Process(ref_mz=760.58)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
     "# Import Data\n",
-    "sc = Process(ref_mz=760.58)\n",
     "# Path can be a file or a folder\n",
     "path = \"path/to/data/\"\n",
-    "sc.load(path)\n",
+    "\n",
+    "# In case error when path is a folder\n",
+    "for file in os.listdir(path):\n",
+    "    sc.load(os.path.join(path,file))\n",
+    "\n",
+    "# load data\n",
+    "# sc.load(path)\n",
     "\n",
     "# Pre-process is necessary\n",
-    "sc.pre_process()"
+    "sc.pre_process()\n",
+    "\"\"\"\n",
+    "file_name: str | list[str] | None = None,\n",
+    "offset: float | None = None,\n",
+    "cut_range: tuple[int, int] | None = None,\n",
+    "resolution: float = PARAMETERS.resolution,\n",
+    "count: int = PARAMETERS.count\n",
+    "\"\"\""
    ]
   },
   {
@@ -41,7 +64,16 @@
    "outputs": [],
    "source": [
     "# Process Data\n",
-    "sc.process()"
+    "sc.process(max_ratio=0.05, threshold=0.2, filter_method=\"any\")\n",
+    "\"\"\" \n",
+    "max_ratio: float = PARAMETERS.maxratio,\n",
+    "adjacent: int = PARAMETERS.adjacent,\n",
+    "snr: float = PARAMETERS.snr,\n",
+    "resolution: float = PARAMETERS.resolution,\n",
+    "threshold: float = PARAMETERS.threshold,\n",
+    "lock_mz: bool = PARAMETERS.lock,\n",
+    "filter_method: str = \"all\" \n",
+    "\"\"\""
    ]
   },
   {
@@ -53,8 +85,13 @@
    "outputs": [],
    "source": [
     "# Post-Process Data\n",
-    "normalize_method = [\"log\", \"z-score\"]\n",
-    "data = sc.post_process(normalize_method=normalize_method)\n",
+    "data = sc.post_process()\n",
+    "\"\"\" \n",
+    "data: dict[str, SCData] = None,\n",
+    "normalize_method=None,\n",
+    "fillna_method: str = \"none\",\n",
+    "tags: list[str] = None\n",
+    "\"\"\"\n",
     "\n",
     "# Optional\n",
     "# Save Data\n",
@@ -71,29 +108,76 @@
    "source": [
     "from SCMeTA import Plot\n",
     "# Visualize Data\n",
-    "plot = Plot()\n",
-    "plot.load(data)\n",
-    "plot.scatter_select()"
+    "path = \"path to data\"\n",
+    "plot = Plot(workdir=path, dpi=100)\n",
+    "plot.load(path=plot.workdir)\n",
+    "\"\"\" \n",
+    "self.workdir: str = workdir\n",
+    "self.dpi: int = dpi=100\n",
+    "plot.load(sort_key=alphabetical)\n",
+    "sort_key=\"alphabetical, or manual, or other key of func:sorted\" \n",
+    "\"\"\"\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "plot.pca()\n",
+    "\"\"\" \n",
+    "save=\"yes\", only save when save=\"yes\"\n",
+    "save_path=None=self.workdir+\"/figure\"\n",
+    "\"\"\""
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "plot.umap()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "plot.tsne()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "plot.heatmap()"
    ]
   }
  ],
  "metadata": {
   "kernelspec": {
-   "display_name": "Python 3",
+   "display_name": ".venv",
    "language": "python",
    "name": "python3"
   },
   "language_info": {
    "codemirror_mode": {
     "name": "ipython",
-    "version": 2
+    "version": 3
    },
    "file_extension": ".py",
    "mimetype": "text/x-python",
    "name": "python",
    "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython2",
-   "version": "2.7.6"
+   "pygments_lexer": "ipython3",
+   "version": "3.10.12"
   }
  },
  "nbformat": 4,

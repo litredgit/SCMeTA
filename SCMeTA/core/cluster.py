@@ -408,7 +408,7 @@ class Process:
             data: dict[str, SCData] = None,
             normalize_method=None,
             fillna_method: str = "none",
-            tags: list[str] = None,
+            tags: list[str] = None
     ):
         """
         Args:

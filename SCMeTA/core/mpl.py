@@ -20,10 +20,12 @@ FIGURE_SIZE = {
 
 
 class MplPlot:
-    def __init__(self):
+    def __init__(self, workdir, dpi=100):
         self.__data: dict[str, SCData] | None = None
         self.__mat: dict[str, pd.DataFrame] = {}
         self.__cell_range: dict[str, int] = {}
+        self.workdir: str = workdir
+        self.dpi: int = dpi
 
     def __read_csv(self, path: str):
         mat = pd.read_csv(path, index_col=0)
@@ -32,12 +34,27 @@ class MplPlot:
         self.__cell_range[name] = mat.shape[0]
         logger.info(f"Successfully load {name}.")
 
-    def load(self, data: dict[str, SCData] | None = None, path: str | None = None):
+    def load(self, data: dict[str, SCData] | None = None, path: str | None = None, sort_key="alphabetical"):
         if path is not None:
             # Load Cell Mat from dir or file
             if os.path.isdir(path):
                 files = os.listdir(path)
-                for file in files:
+                # sort
+                sorted_files = []
+                print("read order:", files)
+                if sort_key == "manual":
+                    while True:
+                        item = input("type item, or \'end\' to end")
+                        if item == 'end':
+                            break
+                        sorted_files.append(item)
+                elif sort_key == "alphabetical":
+                    sorted_files = sorted(files)
+                else:
+                    sorted_files = sorted(os.listdir(path), key=lambda x: sort_key(x))
+                print("sorted order:", sorted_files)
+                # read
+                for file in sorted_files:
                     if file.endswith(".csv"):
                         self.__read_csv(os.path.join(path, file))
             elif os.path.isfile(path):
@@ -72,25 +89,43 @@ class MplPlot:
         )
         return fig, ax
 
-    def pca(self, ax=None, n_components: int = 2):
+    def pca(self, ax=None, n_components: int = 2, save="yes", save_path=None):
         full = discriminate(self.__mat, method="pca", n_components=n_components)
         if ax is None:
             fig, ax = self.init_plot(1, 1, "scatter")
         scatter(data=full, cell_range=self.__cell_range, ax=ax, title="PCA")
+        if save=="yes":
+            if save_path==None:
+                save_path=self.workdir+"/figure"
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+            plt.savefig(save_path+"/pca.jpg", dpi=self.dpi, bbox_inches='tight')
         return to_mat(full, self.__cell_range)
 
-    def tsne(self, ax=None, n_components: int = 2):
+    def tsne(self, ax=None, n_components: int = 2, save="yes", save_path=None):
         full = discriminate(self.__mat, method="tsne", n_components=n_components)
         if ax is None:
             fig, ax = self.init_plot(1, 1, "scatter")
         scatter(data=full, cell_range=self.__cell_range, ax=ax, title="t-SNE")
+        if save=="yes":
+            if save_path==None:
+                save_path=self.workdir+"/figure"
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+            plt.savefig(save_path+"/tsne.jpg", dpi=self.dpi, bbox_inches='tight')
         return to_mat(full, self.__cell_range)
 
-    def umap(self, ax=None, n_components: int = 2):
+    def umap(self, ax=None, n_components: int = 2, save="yes", save_path=None):
         full = discriminate(self.__mat, method="umap", n_components=n_components)
         if ax is None:
             fig, ax = self.init_plot(1, 1, "scatter")
         scatter(data=full, cell_range=self.__cell_range, ax=ax, title="UMAP")
+        if save=="yes":
+            if save_path==None:
+                save_path=self.workdir+"/figure"
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+            plt.savefig(save_path+"/umap.jpg", dpi=self.dpi, bbox_inches='tight')
         return to_mat(full, self.__cell_range)
 
     def scatter_select(self, method: list[str] | None = None, n_components: int = 2):
@@ -107,7 +142,7 @@ class MplPlot:
             else:
                 raise ValueError(f"method {m} is not supported")
 
-    def heatmap(self, ax=None, fig=None, **kwargs):
+    def heatmap(self, ax=None, fig=None, save="yes", save_path=None, **kwargs):
         if ax is None:
             fig, ax = self.init_plot(1, 1, "heatmap")
         heatmap(
@@ -118,21 +153,39 @@ class MplPlot:
             title="Heatmap",
             **kwargs,
         )
+        if save=="yes":
+            if save_path==None:
+                save_path=self.workdir+"/figure"
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+            plt.savefig(save_path+"/heatmap.jpg", dpi=self.dpi, bbox_inches='tight')
 
-    def volcano(self, name1: str, name2: str, ax=None, **kwargs):
+    def volcano(self, name1: str, name2: str, ax=None, save="yes", save_path=None, **kwargs):
         mat1 = self.__mat[name1]
         mat2 = self.__mat[name2]
         if ax is None:
             fig, ax = self.init_plot(1, 1, "scatter")
         volcano(mat1, mat2, name1, name2, ax=ax, **kwargs)
+        if save=="yes":
+            if save_path==None:
+                save_path=self.workdir+"/figure"
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+            plt.savefig(save_path+f"/volcanoof_{name1}_{name2}.jpg", dpi=self.dpi, bbox_inches='tight')
 
-    def box(self, ax=None, method: str = "tsne"):
+    def box(self, ax=None, method: str = "tsne", save="yes", save_path=None):
         if ax is None:
             fig, ax = self.init_plot(1, 1, "scatter")
         full_data = discriminate(self.__mat, method=method, n_components=1)
         dict_data = to_mat(full_data, self.__cell_range, n_components=1)
         h_statistic, p_value = k_w_test(dict_data)
         box(dict_data, ax=ax, h_statistic=h_statistic, p_value=p_value)
+        if save=="yes":
+            if save_path==None:
+                save_path=self.workdir+"/figure"
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+            plt.savefig(save_path+"/box.jpg", dpi=self.dpi, bbox_inches='tight')
         return dict_data
 
     # def radar(self, ax=None, mz_list: pd.DataFrame | None = None):

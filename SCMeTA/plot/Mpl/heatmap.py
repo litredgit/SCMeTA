@@ -13,6 +13,9 @@ CMAP_KEY = {
     "plasma": plt.cm.plasma,
     "inferno": plt.cm.inferno,
     "magma": plt.cm.magma,
+    "jet": plt.cm.jet,
+    "bwr": plt.cm.bwr,
+    "seismic": plt.cm.seismic,
 }
 
 LOG_KEY = {
@@ -28,22 +31,25 @@ def heatmap(
     cell_range: dict[str, int],
     ax: Axes,
     fig: Figure,
-    color_map="viridis",
-    func: str = "NO_LOG",
+    color_map="jet",
+    func: str = "LOG2",
     title: str = "Heatmap",
 ):
     mat = combine_mat(mat_list.values()).fillna(0.00001)
-    mat = mat.apply(LOG_KEY[func])
+    if (func == "NO_LOG"):
+        mat = mat
+    else:
+        mat = mat.apply(LOG_KEY[func])
     mat = mat.T
-    ax.imshow(
+    im = ax.imshow(
         mat, cmap=CMAP_KEY[color_map], aspect="auto"
-    )  # aspect="auto"自动调整像素点，而非默认的正方形
+    )  # save AxesImages from imshow
     mass = mat.index.values
 
     cell_numb = list(cell_range.values())
     cell_name = list(cell_range.keys())
 
-    # 横坐标以细胞名称命名
+    # name x with cells
     new_cell_numb = [0] * len(cell_numb)
     for a in range(len(cell_numb)):
         if a == 0:
@@ -53,12 +59,14 @@ def heatmap(
     for b in range(len(cell_numb)):
         new_cell_numb[b] = new_cell_numb[b] + int(cell_numb[b] / 2)
 
-    ax.set_xlabel("Cell")  # 设置x轴标题
-    ax.set_ylabel("Mass")  # 设置y轴标题
-    ax.set_title(title)  # 设置图像标题
-    fig.colorbar(ScalarMappable(cmap=color_map))  # 使用color bar
+    ax.set_xlabel("Cell")
+    ax.set_ylabel("Mass")
+    ax.set_title(title)
+    fig.colorbar(im, ax=ax)  # set color bar with AxesImage
 
-    ax.xaxis.set_major_locator(ticker.FixedLocator(new_cell_numb))  # 设置x轴坐标的定位
-    ax.xaxis.set_major_formatter(ticker.FixedFormatter(cell_name))  # 设置x轴坐标的名称
-    ax.set_yticks(np.arange(len(mass)), labels=mass)  # 设置y轴坐标的定位和名称
-    ax.yaxis.set_major_locator(ticker.MultipleLocator(30))  # 每20个y坐标显示一次
+    ax.xaxis.set_major_locator(ticker.FixedLocator(new_cell_numb))  # set x location
+    ax.xaxis.set_major_formatter(ticker.FixedFormatter(cell_name))  # set x name
+    ax.set_yticks(np.arange(len(mass)), labels=mass)  # set y location and name
+    ax.yaxis.set_major_locator(ticker.MultipleLocator(5))  # show y label for every 5 y label
+
+    ax.set_xticklabels(cell_name, rotation=45, ha='right') # rotate x label

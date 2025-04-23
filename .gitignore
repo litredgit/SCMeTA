@@ -167,3 +167,7 @@ poetry.lock
 
 /Data
 test.*
+
+# common workfile
+*.csv
+*.ipynb

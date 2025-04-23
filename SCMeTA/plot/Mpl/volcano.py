@@ -23,75 +23,87 @@ def volcano(
     name1: str,
     name2: str,
     ax: Axes,
-    x_threshold: float = 1.0,
-    y_threshold: float = 1.30103,
+    x_threshold: float = 2.0,
+    y_threshold: float = 10,
 ):
     df0, df1, columns = clean_df(mat1, mat2)
 
-    _list1 = []
     _list0 = np.log2((df0.mean(axis=0) / df1.mean(axis=0)).tolist())
-    for i in columns:  # 算差异的显著性
-        _, p = stats.ttest_ind(df0.loc[:, i], df1.loc[:, i])
-        # 做t-test，我省略了方差齐性检验
+    _list1 = []
+    for i in columns:
+        _, p = stats.ttest_ind(df0.loc[:, i], df1.loc[:, i], equal_var=stats.levene(df0.loc[:, i], df1.loc[:, i])[1] > 0.05)
         _list1.append(-np.log(p))
-        # 得到y轴数据的list
 
     df_volcano = pd.DataFrame({"Mass": columns, "x": _list0, "y": _list1})
-    # 构造用于做火山图的dataframe
 
-    # 分组染色
-    df_volcano["group"] = "black"  # 增加一列，索引为group
+    df_volcano["group"] = "black"
     df_volcano.loc[
         (df_volcano.x > x_threshold) & (df_volcano.y > y_threshold), "group"
-    ] = "tab:red"  # 右上角为红色
+    ] = "tab:red"
     df_volcano.loc[
         (df_volcano.x < -x_threshold) & (df_volcano.y > y_threshold), "group"
-    ] = "tab:blue"  # 左上角为蓝色
-    df_volcano.loc[df_volcano.y < y_threshold, "group"] = "dimgrey"  # 阈值以下点为灰色
+    ] = "tab:blue"
+    df_volcano.loc[df_volcano.y < y_threshold, "group"] = "dimgrey"
 
-    # 设置坐标轴范围
-    x_min, x_max = -2, 2
-    y_min, y_max = 0, 20
+    x_min = df_volcano["x"].min()
+    x_max = df_volcano["x"].max()
+    y_min = df_volcano["y"].min()
+    y_max = df_volcano["y"].max()
+    padding_x = 0.1 * (x_max - x_min)
+    padding_y = 0.1 * (y_max - y_min)
+    x_min -= padding_x
+    x_max += padding_x
+    y_min -= padding_y
+    y_max += padding_y
 
-    # 绘制散点图
-    ax.set(xlim=(x_min, x_max), ylim=(y_min, y_max), title="")  # 设置坐标轴的长度
-    ax.scatter(df_volcano["x"], df_volcano["y"], s=2, c=df_volcano["group"])  # 设置标记大小
+    ax.set(xlim=(x_min, x_max), ylim=(y_min, y_max), title="")
+    ax.scatter(df_volcano["x"], df_volcano["y"], s=5, c=df_volcano["group"])
     ax.set_xlabel("log2(fold change)")
     ax.set_ylabel("-log10(P)")
-    ax.spines["right"].set_visible(False)  # 去掉右边框
-    ax.spines["top"].set_visible(False)  # 去掉上边框
+    ax.spines["right"].set_visible(False)
+    ax.spines["top"].set_visible(False)
 
-    # 水平和竖直线
     ax.vlines(
         -x_threshold, y_min, y_max, color="dimgrey", linestyle="dashed", linewidth=1
-    )  # 画竖直线
+    )
     ax.vlines(
         x_threshold, y_min, y_max, color="dimgrey", linestyle="dashed", linewidth=1
-    )  # 画竖直线
+    )
     ax.hlines(
         y_threshold, x_min, x_max, color="dimgrey", linestyle="dashed", linewidth=1
-    )  # 画竖水平线
+    )
 
-    ax.set_xticks(range(-2, 3, 1))  # 设置x轴刻度起点和步长
-    ax.set_yticks(range(0, 21, 5))  # 设置y轴刻度起点和步长
+    x_range = x_max - x_min
+    step_x = np.ceil(x_range / 6)
+    start_x = np.floor(x_min / step_x) * step_x
+    x_ticks = np.arange(start_x, start_x + 7 * step_x, step_x).astype(int)
+    ax.set_xticks(x_ticks)
 
-    # 把红点和蓝点标上Mass
-    index0 = df_volcano[df_volcano.group == "tab:red"].index.tolist()
-    index1 = df_volcano[df_volcano.group == "tab:blue"].index.tolist()
+    # 修改y轴刻度部分
+    y_min_ceil = np.ceil(y_min / 10) * 10
+    y_max_floor = np.floor(y_max / 10) * 10
+    y_range = y_max_floor - y_min_ceil
+    num_ticks = 5  # 选择展示的刻度数量
+    step_y = y_range / (num_ticks - 1)
+    y_ticks = np.arange(0, num_ticks) * step_y + y_min_ceil
+    y_ticks = np.round(y_ticks / 10) * 10  # 确保刻度是10的倍数
+    ax.set_yticks(y_ticks)
+
+    index0 = df_volcano[df_volcano.group == "tab:red"].sort_values(by="y", ascending=False).index[:10].tolist()
+    index1 = df_volcano[df_volcano.group == "tab:blue"].sort_values(by="y", ascending=False).index[:10].tolist()
     for i in index0:
         ax.annotate(
-            columns[i],
-            xy=(_list0[i], _list1[i]),
-            xytext=(_list0[i] + 0.02, _list1[i] + 0.02),
-            size=2,
+            df_volcano.loc[i, "Mass"],
+            xy=(df_volcano.loc[i, "x"], df_volcano.loc[i, "y"]),
+            xytext=(df_volcano.loc[i, "x"] + 0.02, df_volcano.loc[i, "y"] + 0.02),
+            size=10,
         )
-        # 调整字号和位置
     for i in index1:
         ax.annotate(
-            columns[i],
-            xy=(_list0[i], _list1[i]),
-            xytext=(_list0[i] + 0.02, _list1[i] + 0.02),
-            size=2,
+            df_volcano.loc[i, "Mass"],
+            xy=(df_volcano.loc[i, "x"], df_volcano.loc[i, "y"]),
+            xytext=(df_volcano.loc[i, "x"] + 0.02, df_volcano.loc[i, "y"] + 0.02),
+            size=10,
         )
 
     title = f"{name1} and {name2}"

@@ -27,6 +27,7 @@ umap-learn = "^0.5.4"
 pythonnet = "^3.0.3"
 tqdm = "^4.66.1"
 requests = "^2.31.0"
+pymzml = "^2.0.0"
 
 [build-system]
 requires = ["poetry-core"]

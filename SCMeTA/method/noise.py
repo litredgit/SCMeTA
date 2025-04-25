@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from itertools import chain
 
 
@@ -14,6 +15,37 @@ def collect_noise(mat: pd.DataFrame, cell_pos: list[list], self_sub: bool = Fals
     noise_list.append(mat.loc[cell_pos[-1][-1] + 1:].mean())
     return noise_list
 
+
+# def noise_subtract(
+#     mat: pd.DataFrame, cell_pos: list, method: str = "specific"
+# ) -> pd.DataFrame:
+#     """Back subtract the noise from the raw data.
+#     Parameters
+#     ----------
+#     mat : pd.DataFrame
+#         The raw data.
+#     cell_pos : list
+#         The cell positions.
+#     method : str, optional
+#     Returns
+#     -------
+#     pd.DataFrame
+#         The back subtracted data.
+#     """
+#     noise_list = collect_noise(mat, cell_pos, self_sub=True)
+#     if method == "specific":
+#         for index, group in enumerate(cell_pos):
+#             noise_mean = pd.concat(
+#                 [noise_list[index], noise_list[index + 1]], axis=1
+#             ).mean(axis=1)
+#             mat.loc[group] = mat.loc[group] - noise_mean
+#     elif method == "global":
+#         noise_list = list(chain.from_iterable(noise_list))
+#         noise_mean = mat.loc[noise_list].mean()
+#         for group in cell_pos:
+#             mat.loc[group] = mat.loc[group] - noise_mean
+#     mat = mat.clip(lower=0)
+#     return mat
 
 def noise_subtract(
     mat: pd.DataFrame, cell_pos: list, method: str = "specific"
@@ -34,15 +66,26 @@ def noise_subtract(
     noise_list = collect_noise(mat, cell_pos, self_sub=True)
     if method == "specific":
         for index, group in enumerate(cell_pos):
+            # 过滤掉不存在于 mat 索引中的值
+            valid_group = [i for i in group if i in mat.index]
+            if not valid_group:
+                continue
             noise_mean = pd.concat(
                 [noise_list[index], noise_list[index + 1]], axis=1
             ).mean(axis=1)
-            mat.loc[group] = mat.loc[group] - noise_mean
+            # 将 noise_mean 转换为与 mat 相同的数据类型
+            noise_mean = noise_mean.astype(mat.dtypes.iloc[0])
+            mat.loc[valid_group] = mat.loc[valid_group] - noise_mean
     elif method == "global":
         noise_list = list(chain.from_iterable(noise_list))
-        noise_mean = mat.loc[noise_list].mean()
-        for group in cell_pos:
-            mat.loc[group] = mat.loc[group] - noise_mean
+        # 过滤掉不存在于 mat 索引中的值
+        valid_noise_list = [i for i in noise_list if i in mat.index]
+        if valid_noise_list:
+            noise_mean = mat.loc[valid_noise_list].mean()
+            for group in cell_pos:
+                valid_group = [i for i in group if i in mat.index]
+                if valid_group:
+                    mat.loc[valid_group] = mat.loc[valid_group] - noise_mean
     mat = mat.clip(lower=0)
     return mat
 

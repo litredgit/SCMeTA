@@ -5,7 +5,7 @@ Resolution = 0.01
 Count = 10
 MaxRatio = 0.1
 Adjacent = 3
-Snr = 3.0
+Snr = 2.0
 Threshold = 0.2
 Lock = false
 

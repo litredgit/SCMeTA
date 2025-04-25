@@ -1,4 +1,6 @@
 import pandas as pd
+import numpy as np
+
 
 
 def find_cell_index(xic: pd.DataFrame, max_ratio=0.1) -> list:
@@ -38,6 +40,33 @@ def find_cell(
     xic = mat.loc[:, refer_mz].fillna(0)
     cell_array = find_cell_index(xic, max_ratio=max_ratio)
     return find_adjacent(cell_array)
+
+def find_cell_fast(
+        mat: pd.DataFrame,
+        refer_mz: float = 760.58,
+        max_ratio: float = 0.1
+) -> list[list]:
+    """Optimized cell detection using NumPy."""
+    if refer_mz not in mat.columns:
+        print(f"Warning: refer_mz {refer_mz} not found in mat columns.")
+        return []  # 或者返回其他默认值
+    xic = mat[refer_mz].values  # 提取 NumPy 数组
+    xic = np.nan_to_num(xic, nan=0.0)  # 替换 NaN
+
+    # 找满足条件的索引
+    max_val = np.max(xic)
+    threshold = max_val * max_ratio
+    cell_indices = np.where(xic >= threshold)[0]
+
+    # 合并相邻区域
+    if len(cell_indices) == 0:
+        return []
+
+    diffs = np.diff(cell_indices)
+    breaks = np.where(diffs > 1)[0] + 1
+    regions = np.split(cell_indices, breaks)
+
+    return [[r[0], r[-1]] for r in regions]
 
 
 def merge_cell(

@@ -25,6 +25,8 @@ def discriminate(
         "tsne": TSNE,
         "umap": UMAP,
     }
+    for key in data_list:
+        data_list[key].columns = data_list[key].columns.astype(str)
     full = pd.concat(data_list.values(), axis=0).fillna(0)
     reduce = METHODS[method](n_components=n_components)
     return reduce.fit_transform(full)

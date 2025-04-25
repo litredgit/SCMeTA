@@ -1,6 +1,6 @@
 from .filter import filter_occ, filter_mat
 from .to_mat import to_mat, to_list
-from .cell import find_cell, merge_cell
+from .cell import find_cell, merge_cell, find_cell_fast
 from .noise import noise_subtract, filter_assem
 from .normalize import normalize
 from .round import round_columns, round_rows

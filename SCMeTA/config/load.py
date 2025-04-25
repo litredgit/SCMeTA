@@ -3,7 +3,7 @@ from pathlib import Path
 
 import platform
 
-from .default import DEFAULT_CONFIG
+from SCMeTA.config.default import DEFAULT_CONFIG
 
 CONFIG_DIR = Path("~/.scmeta").expanduser()
 CONFIG_PATH = CONFIG_DIR / "config.ini"
@@ -25,16 +25,27 @@ class Parameters:
 
     def __getattr__(self, item):
         value = self.parameters[item]
-        if value.isdigit():
-            value = int(value)
-        elif value.replace(".", "", 1).isdigit():
-            value = float(value)
-        elif value.lower() == "true":
-            value = True
-        elif value.lower() == "false":
-            value = False
-        elif value.lower() == "none":
-            value = None
+        # if value.isdigit():
+        #     value = int(value)
+        # elif value.replace(".", "", 1).isdigit():
+        #     value = float(value)
+        # elif value.lower() == "true":
+        #     value = True
+        # elif value.lower() == "false":
+        #     value = False
+        # elif value.lower() == "none":
+        #     value = None
+        if isinstance(value, str):
+            if value.isdigit():
+                value = int(value)
+            elif value.replace(".", "", 1).isdigit():
+                value = float(value)
+            elif value.lower() == "true":
+                value = True
+            elif value.lower() == "false":
+                value = False
+            elif value.lower() == "none":
+                value = None
         return value
 
     def __getitem__(self, item):

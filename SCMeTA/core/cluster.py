@@ -2,13 +2,13 @@ import os
 import logging
 
 import pandas as pd
+import numpy as np
 
-from SCMeTA.file import SCData
 from SCMeTA.method import (
     filter_occ,
     to_mat,
     to_list,
-    find_cell,
+    find_cell_fast,
     merge_cell,
     noise_subtract,
     filter_assem,
@@ -22,6 +22,9 @@ from SCMeTA.file import load_data, load_from_database
 from SCMeTA.config import PARAMETERS
 from SCMeTA.accelerate import MultiProcessing
 
+from SCMeTA.file.format import SCData
+from SCMeTA.core.io import load_mzml_to_scdata
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,7 +34,7 @@ def _filter_occ(data: SCData, resolution: float, count: int):
 
 class Process:
     def __init__(
-        self, ref_mz: float = 760.58, mz1: float = 760.58, mz2: float = 732.55
+        self, ref_mz: float = 760.58, mz1: float = 760.58, mz2: float = 791.34
     ):
         self.data: dict[str, SCData] = {}
 
@@ -42,21 +45,44 @@ class Process:
         self.__mp = MultiProcessing()
         pass
 
-    def load(
-        self,
-        path: str,
-        file_name: str | None = None,
-        data_type: str = "thermo",
-    ):
-        """
-        Add a file to the MSProcess
-        Args:
-            path: File path or directory path.
-            file_name: File Name, cannot work if path is a directory.
-            data_type: Data type, thermo_raw file / water wiff file / processed csv file are supported.
-        """
-        self.data.update(load_data(path, file_name, data_type))
+
+    # def load(self, path: str, file_name: str = None, data_type: str = "thermo"):
+    #     """所有加载路径都维护字典结构"""
+    #     if not hasattr(self, 'data') or not isinstance(self.data, dict):
+    #         self.data = {}  # 确保data始终是字典
+
+    #     if data_type == "mzml":
+    #         self.data.update(load_mzml_to_scdata(path))  # 合并字典
+    #     elif data_type == "thermo":
+    #         self.data.update(load_data(path, file_name, data_type))  # 原有逻辑
+    #     else:
+    #         raise ValueError(f"Unsupported type: {data_type}")
+
+    #     self.__dir = os.path.dirname(path)
+
+    def load(self, path: str, file_name: str = None, data_type: str = "thermo"):
+        """所有加载路径都维护字典结构"""
+        if not hasattr(self, 'data') or not isinstance(self.data, dict):
+            self.data = {}  # 确保data始终是字典
+        if data_type == "mzml":
+            # 处理mzml文件或文件夹
+            if os.path.isdir(path):
+            # 加载文件夹中的所有mzml文件
+                for file in os.listdir(path):
+                    if file.lower().endswith('.mzml'):
+                        file_path = os.path.join(path, file)
+                        self.data.update(load_mzml_to_scdata(file_path))
+            else:
+                # 加载单个mzml文件
+                self.data.update(load_mzml_to_scdata(path))
+        elif data_type == "thermo":
+            # 保持原有的thermo文件加载逻辑
+            self.data.update(load_data(path, file_name, data_type))
+        else:
+            raise ValueError(f"Unsupported type: {data_type}")
+
         self.__dir = os.path.dirname(path)
+
 
     def load_database(self, file_id: int | list[int]):
         """
@@ -94,11 +120,12 @@ class Process:
             data.columns = [float(i) for i in data.columns]
             self.data[file_name] = SCData(name=file_name, cell_mat=data)
 
+
     def filter_occ(
-        self,
-        count: int = PARAMETERS.count,
-        resolution: float = PARAMETERS.resolution,
-        file_name: str | None = None,
+            self,
+            count: int = PARAMETERS.count,
+            resolution: float = PARAMETERS.resolution,
+            file_name: str | None = None,
     ):
         """
         Filter out the data with low occurrence
@@ -107,43 +134,57 @@ class Process:
             resolution: Resolution of the data, default 0.01
             file_name: File name, if None, all files will be processed.
         """
-        if file_name is None:
-            # self.__mp.run(self.data, _filter_occ, resolution, count)
-            for ms_data in self.data.values():
-                ms_data.process = filter_occ(ms_data.raw.copy(), resolution, count)
-        else:
+        if file_name is not None:
+            # 处理单个指定文件（字典模式）
             self.data[file_name].process = filter_occ(
                 self.data[file_name].raw.copy(), resolution, count
             )
+        else:
+            # 统一处理逻辑（兼容字典和SCData对象两种模式）
+            if isinstance(self.data, dict):  # 字典模式（多文件）
+                for ms_data in self.data.values():
+                    ms_data.process = filter_occ(ms_data.raw.copy(), resolution, count)
+            else:  # SCData 对象模式（单文件）
+                self.data.process = filter_occ(self.data.raw.copy(), resolution, count)
+
         logger.info("Filter out the data with low occurrence.")
+        print("Debug - raw data columns:", ms_data.raw.columns)  # 检查列名
+        print("Debug - raw sample:", ms_data.raw.head())
 
     def gen_mat(self, file_name: str | None = None):
-        if file_name is None:
-            for ms_data in self.data.values():
-                ms_data.mat = to_mat(ms_data.process)
-        else:
-            self.data[file_name].mat = to_mat(self.data[file_name].process)
+        """处理字典中的SCData对象"""
+        targets = [self.data[file_name]] if file_name else self.data.values()
+        for ms_data in targets:
+            ms_data.mat = to_mat(ms_data.process)
 
+    # def denoise(self, max_ratio: float = PARAMETERS.maxratio, file_name: str | None = None):
+    #     if file_name is None:
+    #         for ms_data in self.data.values():
+    #             ms_data.cell_pos = find_cell(
+    #                 ms_data.mat, self.ref_mz, max_ratio=max_ratio
+    #             )
+    #             ms_data.mat = noise_subtract(ms_data.mat, ms_data.cell_pos)
+    #     else:
+    #         ms_data = self.data[file_name]
+    #         ms_data.cell_pos = find_cell(
+    #             ms_data.mat, self.ref_mz, max_ratio=max_ratio
+    #         )
+    #         ms_data.mat = noise_subtract(ms_data.mat, ms_data.cell_pos)
+    #         self.data[file_name] = ms_data
+    #     logger.info("Noise subtracted!")可以work
+    
     def denoise(self, max_ratio: float = PARAMETERS.maxratio, file_name: str | None = None):
-        """
-        Find cell and subtract noise.
-        Args:
-            max_ratio: If the ratio of the max value to the second max value is larger than this value, the cell will be
-            file_name: File name, if None, all files will be processed.
-        """
+        def process_single(ms_data):
+            ms_data.cell_pos = find_cell_fast(ms_data.mat, self.ref_mz, max_ratio)  # 改用优化版
+            ms_data.mat = noise_subtract(ms_data.mat, ms_data.cell_pos)
+            return ms_data
+
         if file_name is None:
             for ms_data in self.data.values():
-                ms_data.cell_pos = find_cell(
-                    ms_data.mat, self.ref_mz, max_ratio=max_ratio
-                )
-                ms_data.mat = noise_subtract(ms_data.mat, ms_data.cell_pos)
+                process_single(ms_data)
         else:
-            ms_data = self.data[file_name]
-            ms_data.cell_pos = find_cell(
-                ms_data.mat, self.ref_mz, max_ratio=max_ratio
-            )
-            ms_data.mat = noise_subtract(ms_data.mat, ms_data.cell_pos)
-            self.data[file_name] = ms_data
+            process_single(self.data[file_name])
+
         logger.info("Noise subtracted!")
 
     def merge_cell(self, adjacent: int = PARAMETERS.adjacent, file_name: str | None = None):
@@ -187,16 +228,10 @@ class Process:
             )
         logger.info("Filter out the data with low SNR.")
 
-    def round_mat(
-        self, resolution: float = PARAMETERS.resolution, file_name: str | None = None
-    ):
-        if file_name is None:
-            for ms_data in self.data.values():
-                ms_data.mat = round_columns(ms_data.mat, resolution)
-        else:
-            self.data[file_name].mat = round_columns(
-                self.data[file_name].mat, resolution
-            )
+    def round_mat(self, resolution: float = PARAMETERS.resolution, file_name: str | None = None):
+        targets = [self.data[file_name]] if file_name else self.data.values()
+        for ms_data in targets:
+            ms_data.mat = round_columns(ms_data.mat, resolution)
 
     def gen_process(self, file_name: str | None = None):
         if file_name is None:
@@ -225,7 +260,8 @@ class Process:
         if name_list is None:
             name_list = list(self.data.keys())
         mat_list = [self.data[name].cell_mat for name in name_list]
-        total_mat = filter_mat(mat_list, threshold, lock_mz, method)
+        # total_mat = filter_mat(mat_list, threshold, lock_mz, method)
+        total_mat = list(filter_mat(mat_list, threshold, lock_mz, method))
         for index, name in enumerate(name_list):
             self.data[name].cell_mat = total_mat[index]
         logger.info("Filter out the mat data.")
@@ -334,6 +370,14 @@ class Process:
             )
         logger.info("Data saved!")
 
+    def _process_single(self, scdata, offset, cut_range, resolution, count):
+        """单个 SCData 对象的处理流程"""
+        if offset:
+            scdata.set_offset(offset)
+        if cut_range:
+            scdata.cut(*cut_range)
+        scdata.process = filter_occ(scdata.raw.copy(), resolution, count)
+
     def pre_process(
         self,
         file_name: str | list[str] | None = None,
@@ -353,22 +397,32 @@ class Process:
         Returns:
 
         """
-        if isinstance(file_name, str):
-            self.data[file_name].set_offset(offset=offset)
-            self.data[file_name].cut(start=cut_range[0], end=cut_range[1])
-        elif isinstance(file_name, list):
-            for name in file_name:
-                offset = float(input(f"Please input the offset of {name}: "))
-                cut_range = (
-                    int(input(f"Please input the start of cut range of {name}: ")),
-                    int(input(f"Please input the end of cut range of {name}: ")),
-                )
-                self.data[name].set_offset(offset=offset)
-                self.data[name].cut(start=cut_range[0], end=cut_range[1])
-        elif file_name is None:
-            pass
-        self.filter_occ(resolution=resolution, count=count)
-        logger.info("Pre-process finished.")
+        if file_name:
+            if isinstance(file_name, str):
+                self.data[file_name].set_offset(offset=offset)
+                self.data[file_name].cut(start=cut_range[0], end=cut_range[1])
+            elif isinstance(file_name, list):
+                for name in file_name:
+                    offset = float(input(f"Please input the offset of {name}: "))
+                    cut_range = (
+                        int(input(f"Please input the start of cut range of {name}: ")),
+                        int(input(f"Please input the end of cut range of {name}: ")),
+                    )
+                    self.data[name].set_offset(offset=offset)
+                    self.data[name].cut(start=cut_range[0], end=cut_range[1])
+            if file_name is None:
+                pass
+            else:
+                self.filter_occ(resolution=resolution, count=count)
+            logger.info("Pre-process finished.")
+        else:
+            if hasattr(self.data, 'values'):  # 如果是字典
+                for ms_data in self.data.values():
+                    self._process_single(ms_data, offset, cut_range, resolution, count)
+            else:  # 如果是 SCData 对象
+                self._process_single(self.data, offset, cut_range, resolution, count)
+
+
 
     def process(
             self,
@@ -390,9 +444,14 @@ class Process:
             lock_mz: If True, the mz you select in lock mz file will be locked
             filter_method: Method of filtering
         """
-        if self.data is None:
-            logger.warning("Please check the data carefully!")
-            raise ValueError("No data loaded, please load data first")
+        # if self.data is None:
+        #     logger.warning("Please check the data carefully!")
+        #     raise ValueError("No data loaded, please load data first")
+        # if not hasattr(self.data, 'process') or self.data.process.empty:
+        #     raise ValueError("No processed data available. Run pre_process() first.")
+        if not self.data:
+            raise ValueError("No data loaded")
+
         self.gen_mat()
         self.round_mat(resolution=resolution)
         self.denoise(max_ratio=max_ratio)

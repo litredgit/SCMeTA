@@ -23,66 +23,41 @@ from SCMeTA.config import PARAMETERS
 from SCMeTA.accelerate import MultiProcessing
 
 from SCMeTA.file.format import SCData
-from SCMeTA.core.io import load_mzml_to_scdata
 
 logger = logging.getLogger(__name__)
 
-
-def _filter_occ(data: SCData, resolution: float, count: int):
-    data.process = filter_occ(data.raw.copy(), resolution, count)
-
-
 class Process:
     def __init__(
-        self, ref_mz: float = 760.58, mz1: float = 760.58, mz2: float = 791.34
+        self, ref_mz: float = 760.58, mz1: float = 760.58, mz2: float = 791.34, mz3: float = 732.55
     ):
         self.data: dict[str, SCData] = {}
 
         self.__mz1: float = mz1
         self.__mz2: float = mz2
+        self.__mz3: float = mz3
         self.ref_mz: float = ref_mz
         self.__dir = None
         self.__mp = MultiProcessing()
         pass
 
-
-    # def load(self, path: str, file_name: str = None, data_type: str = "thermo"):
-    #     """所有加载路径都维护字典结构"""
-    #     if not hasattr(self, 'data') or not isinstance(self.data, dict):
-    #         self.data = {}  # 确保data始终是字典
-
-    #     if data_type == "mzml":
-    #         self.data.update(load_mzml_to_scdata(path))  # 合并字典
-    #     elif data_type == "thermo":
-    #         self.data.update(load_data(path, file_name, data_type))  # 原有逻辑
-    #     else:
-    #         raise ValueError(f"Unsupported type: {data_type}")
-
-    #     self.__dir = os.path.dirname(path)
-
-    def load(self, path: str, file_name: str = None, data_type: str = "thermo"):
-        """所有加载路径都维护字典结构"""
+    def load(
+        self,
+        path: str,
+        file_name: str | None = None,
+        data_type: str = "thermo",
+        method: str = "MultiThread"
+    ):
+        """
+        Add a file to the MSProcess
+        Args:
+            path: File path or directory path.
+            file_name: File Name, cannot work if path is a directory.
+            data_type: Data type, thermo_raw file / water wiff file / mzML file / processed csv file are supported.
+        """
         if not hasattr(self, 'data') or not isinstance(self.data, dict):
-            self.data = {}  # 确保data始终是字典
-        if data_type == "mzml":
-            # 处理mzml文件或文件夹
-            if os.path.isdir(path):
-            # 加载文件夹中的所有mzml文件
-                for file in os.listdir(path):
-                    if file.lower().endswith('.mzml'):
-                        file_path = os.path.join(path, file)
-                        self.data.update(load_mzml_to_scdata(file_path))
-            else:
-                # 加载单个mzml文件
-                self.data.update(load_mzml_to_scdata(path))
-        elif data_type == "thermo":
-            # 保持原有的thermo文件加载逻辑
-            self.data.update(load_data(path, file_name, data_type))
-        else:
-            raise ValueError(f"Unsupported type: {data_type}")
-
+            self.data = {}  # ensure data is dict
+        self.data.update(load_data(path, file_name, data_type, method))
         self.__dir = os.path.dirname(path)
-
 
     def load_database(self, file_id: int | list[int]):
         """
@@ -122,10 +97,10 @@ class Process:
 
 
     def filter_occ(
-            self,
-            count: int = PARAMETERS.count,
-            resolution: float = PARAMETERS.resolution,
-            file_name: str | None = None,
+        self,
+        count: int = PARAMETERS.count,
+        resolution: float = PARAMETERS.resolution,
+        file_name: str | None = None,
     ):
         """
         Filter out the data with low occurrence
@@ -134,22 +109,18 @@ class Process:
             resolution: Resolution of the data, default 0.01
             file_name: File name, if None, all files will be processed.
         """
-        if file_name is not None:
-            # 处理单个指定文件（字典模式）
+        if file_name is None:
+            # self.__mp.run(self.data, _filter_occ, resolution, count)
+            for ms_data in self.data.values():
+                ms_data.process = filter_occ(ms_data.raw.copy(), resolution, count)
+        else:
             self.data[file_name].process = filter_occ(
                 self.data[file_name].raw.copy(), resolution, count
             )
-        else:
-            # 统一处理逻辑（兼容字典和SCData对象两种模式）
-            if isinstance(self.data, dict):  # 字典模式（多文件）
-                for ms_data in self.data.values():
-                    ms_data.process = filter_occ(ms_data.raw.copy(), resolution, count)
-            else:  # SCData 对象模式（单文件）
-                self.data.process = filter_occ(self.data.raw.copy(), resolution, count)
 
         logger.info("Filter out the data with low occurrence.")
-        print("Debug - raw data columns:", ms_data.raw.columns)  # 检查列名
-        print("Debug - raw sample:", ms_data.raw.head())
+        print("Filtered raw data columns:", ms_data.raw.columns)
+        print("Filterad raw sample:", ms_data.raw.head())
 
     def gen_mat(self, file_name: str | None = None):
         """处理字典中的SCData对象"""
@@ -174,16 +145,22 @@ class Process:
     #     logger.info("Noise subtracted!")可以work
     
     def denoise(self, max_ratio: float = PARAMETERS.maxratio, file_name: str | None = None):
-        def process_single(ms_data):
-            ms_data.cell_pos = find_cell_fast(ms_data.mat, self.ref_mz, max_ratio)  # 改用优化版
+        """
+        Find cell and subtract noise.
+        Args:
+            max_ratio: If the ratio of the max value to the second max value is larger than this value, the cell will be
+            file_name: File name, if None, all files will be processed.
+        """
+        def denoise_singlecell(ms_data):
+            ms_data.cell_pos = find_cell_fast(ms_data.mat, self.ref_mz, max_ratio)
             ms_data.mat = noise_subtract(ms_data.mat, ms_data.cell_pos)
             return ms_data
 
         if file_name is None:
             for ms_data in self.data.values():
-                process_single(ms_data)
+                denoise_singlecell(ms_data)
         else:
-            process_single(self.data[file_name])
+            denoise_singlecell(self.data[file_name])
 
         logger.info("Noise subtracted!")
 

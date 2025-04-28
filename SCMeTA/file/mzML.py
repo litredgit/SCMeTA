@@ -1,4 +1,3 @@
-# SCMeTA/core/io.py
 import pymzml
 import pandas as pd
 from SCMeTA.file.format import SCData
@@ -112,7 +111,7 @@ def _parse_mzml(file_path: str, max_scans: int = None) -> pd.DataFrame:
 #     return scdata
 
 
-def load_mzml_to_scdata(file_path: str) -> dict:
+def load_mzML_data(file_path: str) -> dict:
     """始终返回 {filename: SCData} 字典结构"""
     name = Path(file_path).stem
     scdata = SCData(name=name)
@@ -126,13 +125,3 @@ def load_mzml_to_scdata(file_path: str) -> dict:
     scdata.mat = pd.DataFrame()
 
     return {name: scdata}  # 统一为字典
-
-# SCMeTA/core/io.py
-# def load_mzml_to_scdata(file_path: str) -> dict:
-#     """始终返回 {filename: SCData} 结构"""
-#     name = Path(file_path).stem
-#     scdata = SCData(name=name)
-#     df = _parse_mzml(file_path)
-#     scdata.raw = df[["Mass", "Intensity", "Scan"]]
-#     return {name: scdata}  # 统一为字典
-

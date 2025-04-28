@@ -25,16 +25,6 @@ class Parameters:
 
     def __getattr__(self, item):
         value = self.parameters[item]
-        # if value.isdigit():
-        #     value = int(value)
-        # elif value.replace(".", "", 1).isdigit():
-        #     value = float(value)
-        # elif value.lower() == "true":
-        #     value = True
-        # elif value.lower() == "false":
-        #     value = False
-        # elif value.lower() == "none":
-        #     value = None
         if isinstance(value, str):
             if value.isdigit():
                 value = int(value)
@@ -46,6 +36,8 @@ class Parameters:
                 value = False
             elif value.lower() == "none":
                 value = None
+        else:
+            raise ValueError("Value not str, check ~/.scmeta/config.ini")
         return value
 
     def __getitem__(self, item):

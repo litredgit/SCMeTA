@@ -6,8 +6,8 @@ from itertools import chain
 def collect_noise(mat: pd.DataFrame, cell_pos: list[list], self_sub: bool = False) -> list[pd.DataFrame]:
     noise_list = []
     for index, group in enumerate(cell_pos):
-        noise_start = 1 if index == 0 else group[0] - 1
-        noise_end = group[0] - 1
+        noise_start = 1 if index == 0 else cell_pos[index-1][-1] + 1
+        noise_end = cell_pos[index][0] - 1
         noise_mean = mat.loc[noise_start:noise_end].mean()
         noise_list.append(noise_mean)
         if self_sub:
@@ -15,24 +15,6 @@ def collect_noise(mat: pd.DataFrame, cell_pos: list[list], self_sub: bool = Fals
     noise_list.append(mat.loc[cell_pos[-1][-1] + 1:].mean())
     return noise_list
 
-
-# def noise_subtract(
-#     mat: pd.DataFrame, cell_pos: list, method: str = "specific"
-# ) -> pd.DataFrame:
-#     """Back subtract the noise from the raw data.
-#     Parameters
-#     ----------
-#     mat : pd.DataFrame
-#         The raw data.
-#     cell_pos : list
-#         The cell positions.
-#     method : str, optional
-#     Returns
-#     -------
-#     pd.DataFrame
-#         The back subtracted data.
-#     """
-#     noise_list = collect_noise(mat, cell_pos, self_sub=True)
 #     if method == "specific":
 #         for index, group in enumerate(cell_pos):
 #             noise_mean = pd.concat(

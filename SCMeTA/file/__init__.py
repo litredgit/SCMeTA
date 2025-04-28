@@ -5,6 +5,7 @@ from SCMeTA.accelerate import MultiThreader
 from .thermo import load_thermo_data
 from .process import load_process_data
 from .waters import load_waters_data
+from .mzML import load_mzML_data
 from .format import *
 from .database import load_from_database
 
@@ -12,12 +13,14 @@ FUNC_DICT = {
     "thermo": load_thermo_data,
     "process": load_process_data,
     "waters": load_waters_data,
+    "mzML":load_mzML_data
 }
 
 SUFFIX_DICT = {
     "thermo": [".raw", ".txt"],
     "process": [".csv"],
     "waters": [".wiff", ".txt"],
+    "mzML": [".mzML", ".mzml"]
 }
 
 
@@ -45,13 +48,18 @@ def read_files_in_parallel(paths, names = None, data_type: str = "thermo") -> di
 
 
 def load_data(
-    path: str | dict, name: str | None = None, data_type: str = "thermo"
+    path: str | dict, name: str | None = None, data_type: str = "thermo", method: str = "MultiThread"
 ) -> dict[str, SCData]:
     if isinstance(path, str):
         if os.path.isdir(path):
             files = os.listdir(path)
             paths = [os.path.join(path, file) for file in files if is_type(file, data_type)]
-            return read_files_in_parallel(paths=paths, data_type=data_type)
+            if method == "MultiThread":
+                return read_files_in_parallel(paths=paths, data_type=data_type)
+            elif method == "one by one":
+                return {name:FUNC_DICT[data_type](name, path) for name, path in zip(files, paths) if is_type(name, data_type)} 
+            else:
+                raise ValueError("Method not found, choose from (\"MultiThread(default)\" or \"one by one\")")
         elif os.path.isfile(path) and is_type(path, data_type):
             if name is None:
                 name = get_name_from_path(path)

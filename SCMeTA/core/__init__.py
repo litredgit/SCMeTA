@@ -4,10 +4,10 @@ from .match import SearchDatabase
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:  # 仅用于类型检查
+if TYPE_CHECKING:  # True when type checking, False when running
     from .io import load_mzml, load_data
 else:
-    # 运行时动态导入
+    # do when running
     def __getattr__(name):
         if name in ("load_mzml", "load_data"):
             from .io import load_mzml, load_data

@@ -22,7 +22,8 @@ def find_adjacent(cell_array: list) -> list[list]:
 def find_cell(
     mat: pd.DataFrame, refer_mz: float = 760.58, max_ratio: float = 0.1
 ) -> list[list]:
-    """Find the cell regions.
+    """Find the cell regions. 
+    Cells extracted when intensity of refer_mz > max_ratio * max_intensity of all cells. 
 
     Parameters
     ----------
@@ -37,7 +38,10 @@ def find_cell(
     list[list]
         The cell regions.
     """
-    xic = mat.loc[:, refer_mz].fillna(0)
+    if refer_mz not in mat.columns:
+        raise ValueError(f"Warning: refer_mz {refer_mz} not found in mat columns.")
+    xic = mat[refer_mz].values  # extract NumPy Ndarray
+    xic = np.nan_to_num(xic, nan=0.0)  # Replace NaN with zero
     cell_array = find_cell_index(xic, max_ratio=max_ratio)
     return find_adjacent(cell_array)
 
@@ -46,25 +50,22 @@ def find_cell_fast(
         refer_mz: float = 760.58,
         max_ratio: float = 0.1
 ) -> list[list]:
-    """Optimized cell detection using NumPy."""
+    
     if refer_mz not in mat.columns:
-        print(f"Warning: refer_mz {refer_mz} not found in mat columns.")
-        return []  # 或者返回其他默认值
-    xic = mat[refer_mz].values  # 提取 NumPy 数组
-    xic = np.nan_to_num(xic, nan=0.0)  # 替换 NaN
+        raise ValueError(f"refer_mz {refer_mz} not found in mat columns.")
+    xic = mat[refer_mz].values  # extract NumPy Ndarray
+    xic = np.nan_to_num(xic, nan=0.0)  # Replace NaN with zero
 
-    # 找满足条件的索引
-    max_val = np.max(xic)
-    threshold = max_val * max_ratio
-    cell_indices = np.where(xic >= threshold)[0]
+    # find cell index
+    max_intensity = np.max(xic)
+    cell_region = np.where(xic >= max_intensity* max_ratio)[0]
+    if len(cell_region) == 0:
+        raise ValueError("No cell found.")
 
-    # 合并相邻区域
-    if len(cell_indices) == 0:
-        return []
-
-    diffs = np.diff(cell_indices)
+    # find adjacent
+    diffs = np.diff(cell_region)
     breaks = np.where(diffs > 1)[0] + 1
-    regions = np.split(cell_indices, breaks)
+    regions = np.split(cell_region, breaks)
 
     return [[r[0], r[-1]] for r in regions]
 

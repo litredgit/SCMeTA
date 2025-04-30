@@ -8,7 +8,7 @@ from SCMeTA.method import (
     filter_occ,
     to_mat,
     to_list,
-    find_cell_fast,
+    find_cell,
     merge_cell,
     noise_subtract,
     filter_assem,
@@ -169,45 +169,41 @@ class Process:
         logger.info("Filter out the data with low occurrence.")
 
     def gen_mat(self, file_name: str | None = None):
-        """处理字典中的SCData对象"""
-        targets = [self.data[file_name]] if file_name else self.data.values()
-        for ms_data in targets:
-            ms_data.mat = to_mat(ms_data.process)
+        if file_name is None:
+            for ms_data in self.data.values():
+                ms_data.mat = to_mat(data=ms_data.process, min_intensity=PARAMETERS.min_intensity)
+        else:
+            self.data[file_name].mat = to_mat(data=self.data[file_name].process, min_intensity=PARAMETERS.min_intensity)
 
-    # def denoise(self, max_ratio: float = PARAMETERS.maxratio, file_name: str | None = None):
-    #     if file_name is None:
-    #         for ms_data in self.data.values():
-    #             ms_data.cell_pos = find_cell(
-    #                 ms_data.mat, self.ref_mz, max_ratio=max_ratio
-    #             )
-    #             ms_data.mat = noise_subtract(ms_data.mat, ms_data.cell_pos)
-    #     else:
-    #         ms_data = self.data[file_name]
-    #         ms_data.cell_pos = find_cell(
-    #             ms_data.mat, self.ref_mz, max_ratio=max_ratio
-    #         )
-    #         ms_data.mat = noise_subtract(ms_data.mat, ms_data.cell_pos)
-    #         self.data[file_name] = ms_data
-    #     logger.info("Noise subtracted!")可以work
-    
+    def round_mat(self, resolution_intensity: float = PARAMETERS.resolution_intensity, file_name: str | None = None):
+        if file_name is None:
+            for ms_data in self.data.values():
+                ms_data.mat = round_columns(ms_data.mat, resolution_intensity)
+        else:
+            self.data[file_name].mat = round_columns(
+                self.data[file_name].mat, resolution_intensity
+            )
+
     def denoise(self, max_ratio: float = PARAMETERS.maxratio, file_name: str | None = None):
         """
         Find cell and subtract noise.
         Args:
-            max_ratio: If the ratio of the max value to the second max value is larger than this value, the cell will be
+            max_ratio: If ref_mz_intensity > max_ratio * ref_mz_max_intensity, the cell will be extracted
             file_name: File name, if None, all files will be processed.
         """
-        def denoise_singlecell(ms_data):
-            ms_data.cell_pos = find_cell_fast(ms_data.mat, self.ref_mz, max_ratio)
-            ms_data.mat = noise_subtract(ms_data.mat, ms_data.cell_pos)
-            return ms_data
-
         if file_name is None:
             for ms_data in self.data.values():
-                denoise_singlecell(ms_data)
+                ms_data.cell_pos = find_cell(
+                    ms_data.mat, self.ref_mz, max_ratio=max_ratio
+                )
+                ms_data.mat = noise_subtract(ms_data.mat, ms_data.cell_pos)
         else:
-            denoise_singlecell(self.data[file_name])
-
+            ms_data = self.data[file_name]
+            ms_data.cell_pos = find_cell(
+                ms_data.mat, self.ref_mz, max_ratio=max_ratio
+            )
+            ms_data.mat = noise_subtract(ms_data.mat, ms_data.cell_pos)
+            self.data[file_name] = ms_data
         logger.info("Noise subtracted!")
 
     def merge_cell(self, adjacent: int = PARAMETERS.adjacent, file_name: str | None = None):
@@ -251,11 +247,6 @@ class Process:
             )
         logger.info("Filter out the data with low SNR.")
 
-    def round_mat(self, resolution: float = PARAMETERS.resolution, file_name: str | None = None):
-        targets = [self.data[file_name]] if file_name else self.data.values()
-        for ms_data in targets:
-            ms_data.mat = round_columns(ms_data.mat, resolution)
-
     def gen_process(self, file_name: str | None = None):
         if file_name is None:
             for ms_data in self.data.values():
@@ -283,7 +274,6 @@ class Process:
         if name_list is None:
             name_list = list(self.data.keys())
         mat_list = [self.data[name].cell_mat for name in name_list]
-        # total_mat = filter_mat(mat_list, threshold, lock_mz, method)
         total_mat = list(filter_mat(mat_list, threshold, lock_mz, method))
         for index, name in enumerate(name_list):
             self.data[name].cell_mat = total_mat[index]
@@ -448,14 +438,14 @@ class Process:
             max_ratio: float = PARAMETERS.maxratio,
             adjacent: int = PARAMETERS.adjacent,
             snr: float = PARAMETERS.snr,
-            resolution: float = PARAMETERS.resolution,
+            resolution_intensity: float = PARAMETERS.resolution_intensity,
             threshold: float = PARAMETERS.threshold,
             lock_mz: bool = PARAMETERS.lock,
             filter_method: str = "all"
     ):
         """
         Args:
-            max_ratio: If the ratio of the max value to the second max value is larger than this value, the cell will be
+            max_ratio: If ref_mz_intensity > max_ratio * ref_mz_max_intensity, the cell will be extracted
             adjacent: The number of adjacent cells to be combined
             snr: Signal to noise ratio
             resolution: Resolution of the data
@@ -467,7 +457,7 @@ class Process:
             raise ValueError("No data loaded")
 
         self.gen_mat()
-        self.round_mat(resolution=resolution)
+        self.round_mat(resolution_intensity=resolution_intensity)
         self.denoise(max_ratio=max_ratio)
         self.merge_cell(adjacent=adjacent)
         self.filter_assem(snr=snr)

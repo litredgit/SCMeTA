@@ -30,6 +30,20 @@ class SCData:
             self.raw["Mass"] += _offset
 
     def cut(self, start: float | None, end: float | None):
+        """
+        Trims the raw DataFrame to include only rows between the specified start and end indices.
+
+        Parameters:
+        start (float | None): The starting index for the cut. If None, no lower bound is applied.
+        end (float | None): The ending index for the cut. If None, no upper bound is applied.
+
+        Raises:
+        KeyError: If the start or end index is not found in the DataFrame.
+        """
+        if start is not None and start not in self.raw.index:
+            raise KeyError(f"Start index '{start}' not found in DataFrame.")
+        if end is not None and end not in self.raw.index:
+            raise KeyError(f"End index '{end}' not found in DataFrame.")
         self.raw = self.raw.loc[start:end]
 
     def xic(self, mz: float):

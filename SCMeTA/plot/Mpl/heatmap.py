@@ -21,6 +21,8 @@ CMAP_KEY = {
 LOG_KEY = {
     "LOG10": np.log10,
     "LOG2": np.log2,
+    "LOG": np.log,
+    "NO_LOG": lambda x: x
 }
 
 

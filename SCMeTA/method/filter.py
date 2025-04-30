@@ -4,87 +4,39 @@ import pandas as pd
 from SCMeTA.config import INCLUDE_LIST, EXCLUDE_LIST
 from collections import defaultdict
 
-# def sum_df(df, scan) -> pd.DataFrame:
-#     df = df.groupby("Mass").sum().reset_index()
-#     df.insert(0, "Scan", scan)
-#     df = df.set_index("Scan")
-#     return df
-
-# def sum_df(df, scan) -> pd.DataFrame:
-#     """处理单扫描数据（兼容Series和DataFrame输入）"""
-#     # 转换为DataFrame（如果是Series）
-#     if isinstance(df, pd.Series):
-#         df = df.to_frame().T可以work  # 转置使成为单行DataFrame
-def sum_df(df_scan: pd.DataFrame, scan: int) -> pd.DataFrame:
-    # 假设 sum_df 是对每个 scan 的 DataFrame 进行求和或其他聚合操作
-    # 优化：使用 agg() 或 groupby().sum() 替代逐行操作
-    summed = df_scan.groupby("Mass").sum().reset_index()  # 按 Mass 合并相同值
-    summed["scan"] = scan  # 添加 scan 列
-    return summed
-
-    # 列名验证
-    required_cols = {"Mass", "Intensity"}
-    if not required_cols.issubset(df.columns):
-        missing = required_cols - set(df.columns)
-        raise ValueError(f"Missing columns: {missing}. Actual columns: {list(df.columns)}")
-
-    # 分组求和
-    df = df.groupby("Mass", as_index=False).agg({"Intensity": "sum"})
-    df.insert(0, "Scan", int(scan))
-    return df.set_index("Scan")
-
-
-# def peaks_combine(_raw: pd.DataFrame, resolution: float = 0.01) -> pd.DataFrame:
-#     try:
-#         _raw["Mass"] = _raw["Mass"].divide(resolution).apply(np.floor).mul(resolution)
-#     except AttributeError:
-#         _raw["Mass"] = np.floor(_raw["Mass"] / resolution) * resolution
-#
-#     # 修复点：使用 DataFrame.loc[[scan]] 而非 .loc[scan] 确保返回 DataFrame
-#     scans = _raw.index.unique()
-#     temp = [sum_df(_raw.loc[[scan]], scan) for scan in scans]  # 注意双括号
-#     return pd.concat(temp)
-
-# def peaks_combine(_raw: pd.DataFrame, resolution: float) -> pd.DataFrame:
-#     """兼容 Scan 列模式"""
-#     _raw = _raw.copy()
-#     _raw["Mass"] = (_raw["Mass"] / resolution).astype(int) * resolution
-#
-#     # 按 Scan 和 Mass 分组求和（Scan 是列）
-#     grouped = _raw.groupby(["Scan", "Mass"], as_index=False).agg({"Intensity": "sum"})
-#     return grouped.set_index("Scan")可以work  # 最终结果设 Scan 为索引
+def sum_df(df: pd.DataFrame, scan: int) -> pd.DataFrame:
+    df = df.groupby("Mass").sum().reset_index()
+    df.insert(0, "Scan", scan)
+    df = df.set_index("Scan")
+    return df
 
 def peaks_combine(_raw: pd.DataFrame, resolution: float = 0.01) -> pd.DataFrame:
-    # 1. 四舍五入 Mass 到指定分辨率
-    _raw["Mass"] = (_raw["Mass"] / resolution).apply(np.floor) * resolution
+    # round mass to given resolution
+    _raw["Mass"] = np.floor(_raw["Mass"] / resolution) * resolution
 
-    # 2. 使用 groupby + apply 替代 for 循环（快 10-100 倍）
-    grouped = _raw.groupby(_raw.index)  # 按 scan 分组
-    temp = grouped.apply(lambda x: sum_df(x, x.name))  # x.name 是 scan 编号
-    return temp.reset_index(drop=True)  # 返回合并后的 DataFrame
+    # combine peaks with the same mass
+    scans = _raw.index.unique()
+    temp = [sum_df(_raw.loc[[scan]], scan) for scan in scans]  # 注意双括号
+    return pd.concat(temp)
 
-# def filter_occ(
-#     raw: pd.DataFrame, resolution: float = 0.01, count: int = 10
-# ) -> pd.DataFrame:
-#     """
-#     Filter out peaks that occur less than count times in the data.
-#     :param raw: Raw data.
-#     :param resolution: Resolution of m/z.
-#     :param count: Minimum number of occurrences.
-#     :return: List of filtered peaks.
-#     """
-#     process = peaks_combine(raw, resolution)
-#     peaks = process["Mass"].value_counts()
-#     peaks = peaks[peaks >= count]
-#     process = process[process["Mass"].isin(peaks.index)]
-#     return process可以work
-def filter_occ(df: pd.DataFrame, resolution: float = 0.01, count: int = 10) -> pd.DataFrame:
-    # 优化：使用 groupby + size 计算每个 Mass 的出现次数
-    mass_counts = df.groupby("Mass").size().reset_index(name="count")
-    # 使用布尔索引过滤（比逐行循环快 100 倍）
-    filtered_masses = mass_counts[mass_counts["count"] >= count]["Mass"]
-    # 返回过滤后的 DataFrame
-    return df[df["Mass"].isin(filtered_masses)]
+def filter_occ(
+    raw: pd.DataFrame, resolution: float = 0.01, count: int = 10
+) -> pd.DataFrame:
+    """
+    Filter out peaks that occur less than count times in the data.
+    :param raw: Raw data.
+    :param resolution: Resolution of m/z.
+    :param count: Minimum number of occurrences.
+    :return: List of filtered peaks.
+    """
+    # do peaks combine
+    process = peaks_combine(raw, resolution)
+    # extract unique peak list
+    peaks = process["Mass"].value_counts()
+    # filter peaks occur less than count times
+    peaks = peaks[peaks >= count]
+    process = process[process["Mass"].isin(peaks.index)]
+    return process
 
 # def filter_mat(
 #     mat_list: list[pd.DataFrame], threshold: float = 0.2, lock: bool = False, method: str = "all"

@@ -96,6 +96,55 @@ class Process:
             self.data[file_name] = SCData(name=file_name, cell_mat=data)
 
 
+    def offset_preprocess(
+        self,
+        file_list: list | None = None,
+        offset: float | None = None,
+        offset_method: str = "same",
+    ):
+        """
+        offset the data
+        Args:
+            file_list: File name list.
+            offset: Offset of the data, if None, it will ignore the offset step.
+            offset_method: Method to set offset, default "same", can be "separatedly".
+        """
+        if offset_method == "same":
+            for file in file_list:
+                self.data[file].set_offset(offset=offset)
+        elif offset_method == "separatedly":
+            for file in file_list:
+                offset = float(input(f"Please input the offset of {file}: "))
+                self.data[file].set_offset(offset=offset)
+        else:
+            raise ValueError("offset_method must be 'same' or 'separatedly'")
+            
+    def cut_preprocess(
+        self,
+        file_list: list | None = None,
+        cut_range: tuple[int, int] | None = None,
+        cut_method: str = "same",
+    ):
+        """
+        Cut the data
+        Args:
+            file_list: File name list.
+            cut_range: Cut range of the data, if None, it will ignore the cut step.
+            cut_method: Method to cut the data, default "same", can be "separatedly".
+        """
+        if cut_method == "same":
+            for file in file_list:
+                self.data[file].cut(start=cut_range[0], end=cut_range[1])
+        elif cut_method == "separatedly":
+            for file in file_list:
+                cut_range = (
+                    int(input(f"Please input the start of cut range of {file}: ")),
+                    int(input(f"Please input the end of cut range of {file}: ")),
+                )
+                self.data[file].cut(start=cut_range[0], end=cut_range[1])
+        else:
+            raise ValueError("cut_method must be 'same' or 'separatedly'")
+        
     def filter_occ(
         self,
         count: int = PARAMETERS.count,
@@ -117,10 +166,7 @@ class Process:
             self.data[file_name].process = filter_occ(
                 self.data[file_name].raw.copy(), resolution, count
             )
-
         logger.info("Filter out the data with low occurrence.")
-        print("Filtered raw data columns:", ms_data.raw.columns)
-        print("Filterad raw sample:", ms_data.raw.head())
 
     def gen_mat(self, file_name: str | None = None):
         """处理字典中的SCData对象"""
@@ -347,14 +393,6 @@ class Process:
             )
         logger.info("Data saved!")
 
-    def _process_single(self, scdata, offset, cut_range, resolution, count):
-        """单个 SCData 对象的处理流程"""
-        if offset:
-            scdata.set_offset(offset)
-        if cut_range:
-            scdata.cut(*cut_range)
-        scdata.process = filter_occ(scdata.raw.copy(), resolution, count)
-
     def pre_process(
         self,
         file_name: str | list[str] | None = None,
@@ -362,7 +400,9 @@ class Process:
         cut_range: tuple[int, int] | None = None,
         resolution: float = PARAMETERS.resolution,
         count: int = PARAMETERS.count,
-    ):
+        offset_method: str = "same",
+        cut_method: str = "same",
+        ):
         """
         Pre-process the data, including offset, cut, and round.
         Args:
@@ -371,35 +411,37 @@ class Process:
             cut_range: Cut range of the data, if None, it will ignore the cut step.
             resolution: Resolution of the data, default 0.01.
             count: Minimum occurrence of the data, default 10.
+            offset_method: Method to set offset, default "same", can be "separatedly".
+            cut_method: Method to cut the data, default "same", can be "separatedly".
         Returns:
 
         """
-        if file_name:
-            if isinstance(file_name, str):
-                self.data[file_name].set_offset(offset=offset)
-                self.data[file_name].cut(start=cut_range[0], end=cut_range[1])
-            elif isinstance(file_name, list):
-                for name in file_name:
-                    offset = float(input(f"Please input the offset of {name}: "))
-                    cut_range = (
-                        int(input(f"Please input the start of cut range of {name}: ")),
-                        int(input(f"Please input the end of cut range of {name}: ")),
-                    )
-                    self.data[name].set_offset(offset=offset)
-                    self.data[name].cut(start=cut_range[0], end=cut_range[1])
-            if file_name is None:
-                pass
-            else:
-                self.filter_occ(resolution=resolution, count=count)
-            logger.info("Pre-process finished.")
+        if offset is None and cut_range is None:
+            pass
         else:
-            if hasattr(self.data, 'values'):  # 如果是字典
-                for ms_data in self.data.values():
-                    self._process_single(ms_data, offset, cut_range, resolution, count)
-            else:  # 如果是 SCData 对象
-                self._process_single(self.data, offset, cut_range, resolution, count)
+            # convert file_name or self.data.keys() to list
+            if isinstance(file_name, str):
+                file_list = [file_name]
+            elif isinstance(file_name, list):
+                file_list = file_name
+            elif file_name is None:
+                file_list = list(self.data.keys())
+            else:
+                raise ValueError("File name not str or list.")
+            
+            # Check if the file is in the data dictionary
+            for file in file_list:
+                if file not in list(self.data.keys()):
+                    raise ValueError(f"{file} not in data")
+                
+            # do offset and cut
+            if offset is not None:
+                self.offset_preprocess(file_list, offset, offset_method)
+            if cut_range is not None:
+                self.cut_preprocess(file_list, cut_range, cut_method)
 
-
+        self.filter_occ(resolution=resolution, count=count)
+        logger.info("Pre-process finished.")
 
     def process(
             self,
@@ -421,11 +463,6 @@ class Process:
             lock_mz: If True, the mz you select in lock mz file will be locked
             filter_method: Method of filtering
         """
-        # if self.data is None:
-        #     logger.warning("Please check the data carefully!")
-        #     raise ValueError("No data loaded, please load data first")
-        # if not hasattr(self.data, 'process') or self.data.process.empty:
-        #     raise ValueError("No processed data available. Run pre_process() first.")
         if not self.data:
             raise ValueError("No data loaded")
 

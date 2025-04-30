@@ -9,6 +9,18 @@ from .mzML import load_mzML_data
 from .format import *
 from .database import load_from_database
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # True when type checking, False when running
+    from .mzML import load_mzml, load_data
+else:
+    # do when running
+    def __getattr__(name):
+        if name in ("load_mzml", "load_data"):
+            from .mzML import load_mzml, load_data
+            return locals()[name]
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 FUNC_DICT = {
     "thermo": load_thermo_data,
     "process": load_process_data,
@@ -70,5 +82,7 @@ def load_data(
         paths = [path_from_database(path) for path in path.values()]
         results = read_files_in_parallel(paths=paths, names=path.keys(), data_type=data_type)
         return results
+    else:
+        raise ValueError(f"path{path} not str or dict")
 
 

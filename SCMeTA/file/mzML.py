@@ -111,17 +111,17 @@ def _parse_mzml(file_path: str, max_scans: int = None) -> pd.DataFrame:
 #     return scdata
 
 
-def load_mzML_data(file_path: str) -> dict:
-    """始终返回 {filename: SCData} 字典结构"""
-    name = Path(file_path).stem
+def load_mzML_data(name, path) -> SCData:
     scdata = SCData(name=name)
 
-    # 解析数据（保持Scan为列）
-    df = _parse_mzml(file_path)
-    scdata.raw = df[["Mass", "Intensity", "Scan"]]
+    # load mzML file with Scan as index
+    if not path.lower().endswith(".mzml"):
+        raise ValueError("File is not a mzML file")
+    df = _parse_mzml(path)
+    scdata.raw = df[["Mass", "Intensity", "Scan"]].set_index("Scan")
 
-    # 初始化空字段
+    # initialize blank attributes
     scdata.process = pd.DataFrame()
     scdata.mat = pd.DataFrame()
 
-    return {name: scdata}  # 统一为字典
+    return scdata

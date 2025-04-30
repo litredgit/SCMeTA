@@ -72,7 +72,9 @@ def load_data(
                 return {name:FUNC_DICT[data_type](name, path) for name, path in zip(files, paths) if is_type(name, data_type)} 
             else:
                 raise ValueError("Method not found, choose from (\"MultiThread(default)\" or \"one by one\")")
-        elif os.path.isfile(path) and is_type(path, data_type):
+        elif os.path.isfile(path):
+            if not is_type(path, data_type):
+                raise ValueError(f"File {path} is not a {data_type} file")
             if name is None:
                 name = get_name_from_path(path)
             return {name: FUNC_DICT[data_type](name, path)}

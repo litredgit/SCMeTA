@@ -171,3 +171,4 @@ test.*
 # common workfile
 *.csv
 *.ipynb
+tests/

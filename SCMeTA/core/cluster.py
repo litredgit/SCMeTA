@@ -184,13 +184,7 @@ class Process:
             self.data[file_name].mat = to_mat(data=self.data[file_name].process, min_intensity=PARAMETERS.min_intensity)
             print(f"only for {file_name}")
         logger.info("Data format converted to crosstab.")
-        print(
-            f"before:\n{self.data[file_name].process.head(5) if file_name 
-                      else next(iter(self.data.values())).process.head(5)}"
-            '\n'
-            f"after:\n{self.data[file_name].mat.head(5) if file_name 
-                     else next(iter(self.data.values())).mat.head(5)}"
-            )
+        print(f"before:\n{self.data[file_name].process.head(5) if file_name else next(iter(self.data.values())).process.head(5)}\nafter:\n{self.data[file_name].mat.head(5) if file_name else next(iter(self.data.values())).mat.head(5)}")
 
     def round_mat(self, resolution_intensity: float = PARAMETERS.resolution_intensity, file_name: str | None = None):
         if file_name is None:
@@ -299,7 +293,7 @@ class Process:
         if name_list is None:
             name_list = list(self.data.keys())
         else:
-            print(f"only for {", ".join(name_list)}")
+            print(f"only for {','.join(name_list)}")
         mat_list = [self.data[name].cell_mat for name in name_list]
         total_mat = list(filter_mat(mat_list, threshold, lock_mz, method))
         for index, name in enumerate(name_list):

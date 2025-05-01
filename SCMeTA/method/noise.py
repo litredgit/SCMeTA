@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 from itertools import chain
 
 def collect_noise(mat: pd.DataFrame, cell_pos: list[list], self_sub: bool = False) -> list[pd.DataFrame]:
@@ -36,12 +35,12 @@ def noise_subtract(
             noise_mean = pd.concat(
                 [noise_list[index], noise_list[index + 1]], axis=1
             ).mean(axis=1)
-            mat.loc[group[0]:group[-1]] = mat.loc[group[0]:group[-1]] - noise_mean
+            mat.loc[group[0]:group[-1]] = mat.loc[group[0]:group[-1]] - noise_mean.astype(mat.dtypes.iloc[0])
     elif method == "global":
         noise_list = list(chain.from_iterable(noise_list))
         noise_mean = mat.loc[noise_list].mean()
         for group in cell_pos:
-            mat.loc[group[0]:group[-1]] = mat.loc[group[0]:group[-1]] - noise_mean
+            mat.loc[group[0]:group[-1]] = mat.loc[group[0]:group[-1]] - noise_mean.astype(mat.dtypes.iloc[0])
     mat = mat.clip(lower=0)
     return mat
 

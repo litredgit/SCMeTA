@@ -109,6 +109,9 @@ def filter_mat(mat_list: list[pd.DataFrame], threshold: float = 0.2, lock: bool 
             mz_list = [mz for mz, cnt in mz_counts.items() 
                        if  (not lock and cnt >= threshold_count) or (lock and mz in INCLUDE_LIST and mz not in EXCLUDE_LIST)]
             yield mat.reindex(columns=mz_list, fill_value=0)
+    elif method == "none":
+        for mat in mat_list:
+            yield mat 
     else:
         raise ValueError(f"Unknown method: {method}. Use 'all' or 'any'.")
 

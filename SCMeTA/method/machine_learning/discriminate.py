@@ -25,6 +25,7 @@ def discriminate(
         "tsne": TSNE,
         "umap": UMAP,
     }
+    # convert the column_index to string
     for key in data_list:
         data_list[key].columns = data_list[key].columns.astype(str)
     full = pd.concat(data_list.values(), axis=0).fillna(0)

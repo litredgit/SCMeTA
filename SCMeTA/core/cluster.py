@@ -53,11 +53,12 @@ class Process:
             path: File path or directory path.
             file_name: File Name, cannot work if path is a directory.
             data_type: Data type, thermo_raw file / water wiff file / mzML file / processed csv file are supported.
+            method: Method to load the data, default "MultiThread", can be "one by one".
         """
-        if not hasattr(self, 'data') or not isinstance(self.data, dict):
-            self.data = {}  # ensure data is dict
         self.data.update(load_data(path, file_name, data_type, method))
         self.__dir = os.path.dirname(path)
+        if not self.data:
+            raise ValueError("No data loaded")
         logger.info(f"Loaded files in path {[path]}.")
 
     def load_database(self, file_id: int | list[int]):
@@ -418,7 +419,7 @@ class Process:
         cut_method: str = "same",
         ):
         """
-        Pre-process the data, including offset, cut, and round.
+        Pre-process the data, including peak_combine, offset, cut, and round.
         Args:
             file_name: File name
             offset: Offset of the data, if None, it will ignore the offset step.
@@ -472,7 +473,7 @@ class Process:
             max_ratio: If ref_mz_intensity > max_ratio * ref_mz_max_intensity, the cell will be extracted
             adjacent: The number of adjacent cells to be combined
             snr: Signal to noise ratio
-            resolution: Resolution of the data
+            resolution_intensity: Resolution of the mass intensity
             threshold: Threshold of the data
             lock_mz: If True, the mz you select in lock mz file will be locked
             filter_method: Method of filtering

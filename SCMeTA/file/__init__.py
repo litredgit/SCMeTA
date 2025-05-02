@@ -1,6 +1,6 @@
 import os
 
-from SCMeTA.accelerate import MultiThreader
+from SCMeTA.accelerate import MultiProcessing
 
 from .thermo import load_thermo_data
 from .process import load_process_data
@@ -50,12 +50,12 @@ def path_from_database(path: str) -> str:
     return os.path.join(base_path, path)
 
 
-def read_files_in_parallel(paths, names = None, data_type: str = "thermo") -> dict[str, SCData]:
+def read_files_in_parallel(paths: list[str], names = None, data_type: str = "thermo") -> dict[str, SCData]:
     if names is None:
         names = [get_name_from_path(path) for path in paths]
-    args = [(name, path) for name, path in zip(names, paths)]
-    mt = MultiThreader()
-    results = mt.run(FUNC_DICT[data_type], args)
+    args = dict(zip(names, paths))
+    mp = MultiProcessing()
+    results = mp.run(func=FUNC_DICT[data_type], data=args)
     return results
 
 

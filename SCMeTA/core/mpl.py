@@ -20,53 +20,71 @@ FIGURE_SIZE = {
 
 
 class MplPlot:
-    def __init__(self, workdir, dpi=100):
+    def __init__(self, path: str |None = None):
         self.__data: dict[str, SCData] | None = None
         self.__mat: dict[str, pd.DataFrame] = {}
         self.__cell_range: dict[str, int] = {}
-        self.workdir: str = workdir
-        self.dpi: int = dpi
+        self.path: str = path
 
     def __read_csv(self, path: str):
         mat = pd.read_csv(path, index_col=0)
         name = os.path.basename(path).split(".")[0]
         self.__mat[name] = mat
-        self.__cell_range[name] = mat.shape[0]
-        logger.info(f"Successfully load {name}.")
 
-    def load(self, data: dict[str, SCData] | None = None, path: str | None = None, sort_key="alphabetical"):
-        if path is not None:
-            # Load Cell Mat from dir or file
-            if os.path.isdir(path):
-                files = os.listdir(path)
-                # sort
-                sorted_files = []
-                print("read order:", files)
-                if sort_key == "manual":
-                    while True:
-                        item = input("type item, or \'end\' to end")
-                        if item == 'end':
-                            break
-                        sorted_files.append(item)
-                elif sort_key == "alphabetical":
-                    sorted_files = sorted(files)
-                else:
-                    sorted_files = sorted(os.listdir(path), key=lambda x: sort_key(x))
-                print("sorted order:", sorted_files)
-                # read
-                for file in sorted_files:
-                    if file.endswith(".csv"):
-                        self.__read_csv(os.path.join(path, file))
-            elif os.path.isfile(path):
-                self.__read_csv(path)
-        elif data is not None:
+    def sort_loaded_data(self, sort_key: str = "alphabetical"):
+        """
+        Sort loaded data 
+        Args:
+            sort_key: sort key, default is "alphabetical"
+        """
+        print("current order:\n", self.__mat.keys())
+        if sort_key == "alphabetical":
+            self.__mat = dict(sorted(self.__mat.items(), key=lambda x: x[0]))
+        else:
+            sorted_list = []
+            if sort_key == "manual":
+                while True:
+                    item = input("type item, or \'end\' to end")
+                    if item == 'end':
+                        break
+                    sorted_list.append(item)
+            else:
+                sorted_list = sorted(self.__mat.keys(), key=lambda x: sort_key(x))
+            self.__mat = {name: self.__mat[name] for name in sorted_list}
+        logger.info(f"Sorted data by {sort_key}")
+        print("sorted order:\n", self.__mat.keys())
+
+    def load(
+            self, 
+            data: dict[str, SCData] | None = None, 
+            path: str | None = None, 
+            sort_key: str="alphabetical"
+            ):
+        if data is not None:
             self.__data = data
             for name, ms_data in data.items():
                 self.__mat[name] = ms_data.cell_mat
-            logger.info("Successfully load data")
+        if path is None:
+            path = self.path
+        if data or path:
+            pass
         else:
-            raise ValueError("Please provide data or path")
+            raise ValueError("Please provide data or path to load data")
+        # Load Cell Mat from dir or file
+        if os.path.isdir(path):
+            files = os.listdir(path)
+            # read
+            for file in files:
+                if file.endswith(".csv"):
+                    self.__read_csv(os.path.join(path, file))
+        elif os.path.isfile(path):
+                self.__read_csv(path)
+        logger.info("Successfully load data")
+
+        # sort loaded data
+        self.sort_loaded_data(sort_key=sort_key)
         self.__cell_range = {key: mat.shape[0] for key, mat in self.__mat.items()}
+
 
     @staticmethod
     def init_plot(rows: int, cols: int, figure_type: str) -> tuple[Figure, Axes]:
@@ -89,43 +107,31 @@ class MplPlot:
         )
         return fig, ax
 
-    def pca(self, ax=None, n_components: int = 2, save="yes", save_path=None):
+    def pca(self, ax=None, n_components: int = 2, save: str="yes", save_path: str | None=None, dpi: int | None = None):
         full = discriminate(self.__mat, method="pca", n_components=n_components)
         if ax is None:
             fig, ax = self.init_plot(1, 1, "scatter")
         scatter(data=full, cell_range=self.__cell_range, ax=ax, title="PCA")
         if save=="yes":
-            if save_path==None:
-                save_path=self.workdir+"/figure"
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
-            plt.savefig(save_path+"/pca.jpg", dpi=self.dpi, bbox_inches='tight')
+            self.save_plot(save_path=save_path, dpi=dpi, name="pca")
         return to_mat(full, self.__cell_range)
 
-    def tsne(self, ax=None, n_components: int = 2, save="yes", save_path=None):
+    def tsne(self, ax=None, n_components: int = 2, save: str="yes", save_path: str | None=None, dpi: int | None = None):
         full = discriminate(self.__mat, method="tsne", n_components=n_components)
         if ax is None:
             fig, ax = self.init_plot(1, 1, "scatter")
         scatter(data=full, cell_range=self.__cell_range, ax=ax, title="t-SNE")
         if save=="yes":
-            if save_path==None:
-                save_path=self.workdir+"/figure"
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
-            plt.savefig(save_path+"/tsne.jpg", dpi=self.dpi, bbox_inches='tight')
+            self.save_plot(save_path=save_path, dpi=dpi, name="tsne")
         return to_mat(full, self.__cell_range)
 
-    def umap(self, ax=None, n_components: int = 2, save="yes", save_path=None):
+    def umap(self, ax=None, n_components: int = 2, save: str="yes", save_path: str | None=None, dpi: int | None = None):
         full = discriminate(self.__mat, method="umap", n_components=n_components)
         if ax is None:
             fig, ax = self.init_plot(1, 1, "scatter")
         scatter(data=full, cell_range=self.__cell_range, ax=ax, title="UMAP")
         if save=="yes":
-            if save_path==None:
-                save_path=self.workdir+"/figure"
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
-            plt.savefig(save_path+"/umap.jpg", dpi=self.dpi, bbox_inches='tight')
+            self.save_plot(save_path=save_path, dpi=dpi, name="umap")
         return to_mat(full, self.__cell_range)
 
     def scatter_select(self, method: list[str] | None = None, n_components: int = 2):
@@ -142,7 +148,7 @@ class MplPlot:
             else:
                 raise ValueError(f"method {m} is not supported")
 
-    def heatmap(self, ax=None, fig=None, save="yes", save_path=None, **kwargs):
+    def heatmap(self, ax=None, fig=None, save: str="yes", save_path: str | None=None, dpi: int | None = None, **kwargs):
         if ax is None:
             fig, ax = self.init_plot(1, 1, "heatmap")
         heatmap(
@@ -154,26 +160,18 @@ class MplPlot:
             **kwargs,
         )
         if save=="yes":
-            if save_path==None:
-                save_path=self.workdir+"/figure"
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
-            plt.savefig(save_path+"/heatmap.jpg", dpi=self.dpi, bbox_inches='tight')
+            self.save_plot(save_path=save_path, dpi=dpi, name="heatmap")
 
-    def volcano(self, name1: str, name2: str, ax=None, save="yes", save_path=None, **kwargs):
+    def volcano(self, name1: str, name2: str, ax=None, save="yes", save_path: str | None=None, dpi: int | None = None, **kwargs):
         mat1 = self.__mat[name1]
         mat2 = self.__mat[name2]
         if ax is None:
             fig, ax = self.init_plot(1, 1, "scatter")
         volcano(mat1, mat2, name1, name2, ax=ax, **kwargs)
         if save=="yes":
-            if save_path==None:
-                save_path=self.workdir+"/figure"
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
-            plt.savefig(save_path+f"/volcanoof_{name1}_{name2}.jpg", dpi=self.dpi, bbox_inches='tight')
+            self.save_plot(save_path=save_path, dpi=dpi, name="volcano")
 
-    def box(self, ax=None, method: str = "tsne", save="yes", save_path=None):
+    def box(self, ax=None, method: str = "tsne", save="yes", save_path: str | None=None, dpi: int | None = None):
         if ax is None:
             fig, ax = self.init_plot(1, 1, "scatter")
         full_data = discriminate(self.__mat, method=method, n_components=1)
@@ -181,11 +179,7 @@ class MplPlot:
         h_statistic, p_value = k_w_test(dict_data)
         box(dict_data, ax=ax, h_statistic=h_statistic, p_value=p_value)
         if save=="yes":
-            if save_path==None:
-                save_path=self.workdir+"/figure"
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
-            plt.savefig(save_path+"/box.jpg", dpi=self.dpi, bbox_inches='tight')
+            self.save_plot(save_path=save_path, dpi=dpi, name="box")
         return dict_data
 
     # def radar(self, ax=None, mz_list: pd.DataFrame | None = None):
@@ -225,3 +219,20 @@ class MplPlot:
         full.columns = [cell1, cell2]
         bar(full, ax=ax)
         return full
+
+    def save_plot(
+            self, 
+            save_path: str | None = None, 
+            dpi: int | None = None,
+            name: str = "figure"
+            ):
+        if save_path is None:
+            if self.path is None:
+                raise ValueError("Please provide a path to save the figure")
+            save_path = self.path + "/figure"
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        if dpi is None:
+            dpi = 300
+        plt.savefig(save_path + f"/{name}.jpg", dpi=dpi, bbox_inches='tight')
+        logger.info(f"{name}.jpg saved in {save_path}/, dpi={dpi}")

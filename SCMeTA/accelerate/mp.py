@@ -13,7 +13,7 @@ class MultiProcessing:
         sub_dict, func, args, kwargs = args
         result = []
         for key in sub_dict:
-            processed = {key: func(sub_dict[key], *args, **kwargs)}
+            processed = {key: func(key, sub_dict[key], *args, **kwargs)}
             result.append(processed)
         return result
 
@@ -24,7 +24,7 @@ class MultiProcessing:
             result.update(d)
         return result
 
-    def run(self, data, func, *args, **kwargs):
+    def run(self, data : dict, func, *args, **kwargs):
         num_processes = self.cpu_num
 
         # 将字典拆分成子字典列表

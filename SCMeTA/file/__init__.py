@@ -1,6 +1,7 @@
 import os
 
 from SCMeTA.accelerate import MultiProcessing
+from SCMeTA.accelerate import MultiThreader
 
 from .thermo import load_thermo_data
 from .process import load_process_data
@@ -50,28 +51,33 @@ def path_from_database(path: str) -> str:
     return os.path.join(base_path, path)
 
 
-def read_files_in_parallel(paths: list[str], names = None, data_type: str = "thermo") -> dict[str, SCData]:
+def read_files_in_parallel(paths: list[str], names = None, data_type: str = "thermo", multi_method: str = "Multiprocess") -> dict[str, SCData]:
     if names is None:
         names = [get_name_from_path(path) for path in paths]
-    args = dict(zip(names, paths))
-    mp = MultiProcessing()
-    results = mp.run(func=FUNC_DICT[data_type], data=args)
+    if multi_method == "MuliProcess":
+        args = dict(zip(names, paths))
+        mp = MultiProcessing()
+        results = mp.run(func=FUNC_DICT[data_type], data=args)
+    elif multi_method == "MultiThread":
+        args = [(name, path) for name, path in zip(names, paths)]
+        mt = MultiThreader()
+        results = mt.run(FUNC_DICT[data_type], args)
+    else:
+        raise ValueError("Method not found, choose from (\"mp\" or \"mt\")")
     return results
 
 
 def load_data(
-    path: str | dict, name: str | None = None, data_type: str = "thermo", method: str = "MultiThread"
+    path: str | dict, name: str | None = None, data_type: str = "thermo", method: str = "MultiProcess"
 ) -> dict[str, SCData]:
     if isinstance(path, str):
         if os.path.isdir(path):
             files = os.listdir(path)
             paths = [os.path.join(path, file) for file in files if is_type(file, data_type)]
-            if method == "MultiThread":
-                return read_files_in_parallel(paths=paths, data_type=data_type)
-            elif method == "one by one":
+            if method == "one by one":
                 return {name:FUNC_DICT[data_type](name, path) for name, path in zip(files, paths) if is_type(name, data_type)} 
             else:
-                raise ValueError("Method not found, choose from (\"MultiThread(default)\" or \"one by one\")")
+                return read_files_in_parallel(paths=paths, data_type=data_type, multi_method=method)
         elif os.path.isfile(path):
             if not is_type(path, data_type):
                 raise ValueError(f"File {path} is not a {data_type} file")

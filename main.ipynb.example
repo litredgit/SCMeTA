@@ -48,7 +48,7 @@
     "1. `path: str`\n",
     "2. `file_name: str | None = None`\n",
     "3. `data_type: str = \"thermo\"`: Data type, default`\"thermo\"` .raw file, can be `\"waters\"` .wiff file / `\"mzML\"` .mzML file / `\"process\"` .csv file.\n",
-    "4. `method str = \"MultiThread\"`: Method to load, can be `\"MultiThread\"`, `\"one by one\"`.\n",
+    "4. `method str = \"MultiProcess\"`: Method to load, can be `\"MultiThread\"`, `\"one by one\"`.\n",
     "\n",
     "Returns:\n",
     "1. `self.data: dict[file_name, SCData]`\n",
@@ -218,7 +218,7 @@
    "source": [
     "Args:\n",
     "\n",
-    "1. `save: str=\"yes\"`: only auto save when `save == \"yes\"`\n",
+    "1. `save: bool=False`: only auto save when `save is True`\n",
     "2. `save_path: str | None=None`=plot.path\n",
     "3. `dpi: int | None = None`=300"
    ]
@@ -253,7 +253,7 @@
  ],
  "metadata": {
   "kernelspec": {
-   "display_name": ".venv",
+   "display_name": "scmeta",
    "language": "python",
    "name": "python3"
   },

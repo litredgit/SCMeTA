@@ -7,5 +7,6 @@ from .round import round_columns, round_rows
 from .combine_mat import combine_mat
 from .cut import cut_data
 from .k_w_test import k_w_test
+from .format_converter import convert_format
 
 from .machine_learning import discriminate

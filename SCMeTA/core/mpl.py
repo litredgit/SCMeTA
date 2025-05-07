@@ -43,14 +43,13 @@ class MplPlot:
         else:
             sorted_list = []
             if sort_key == "manual":
-                while True:
-                    item = input("type item, or \'end\' to end")
-                    if item == 'end':
-                        break
-                    sorted_list.append(item)
+                sorted_list = input("Please input the name for each file by order, separated by comma: ")
             else:
                 sorted_list = sorted(self.__mat.keys(), key=lambda x: sort_key(x))
-            self.__mat = {name: self.__mat[name] for name in sorted_list}
+            try:
+                self.__mat = {name: self.__mat[name] for name in sorted_list}
+            except KeyError as e:
+                raise KeyError(f"KeyError: {e}. Please check the sort key")
         logger.info(f"Sorted data by {sort_key}")
         print("sorted order:\n", self.__mat.keys())
 
@@ -60,25 +59,26 @@ class MplPlot:
             path: str | None = None, 
             sort_key: str="alphabetical"
             ):
-        if data is not None:
-            self.__data = data
-            for name, ms_data in data.items():
-                self.__mat[name] = ms_data.cell_mat
-        if path is None:
-            path = self.path
         if data or path:
             pass
         else:
             raise ValueError("Please provide data or path to load data")
+        
         # Load Cell Mat from dir or file
-        if os.path.isdir(path):
-            files = os.listdir(path)
-            # read
-            for file in files:
-                if file.endswith(".csv"):
-                    self.__read_csv(os.path.join(path, file))
-        elif os.path.isfile(path):
-                self.__read_csv(path)
+        if data is not None:
+            self.__data = data
+            for name, ms_data in data.items():
+                self.__mat[name] = ms_data.cell_mat
+        
+        if path is not None:
+            if os.path.isdir(path):
+                files = os.listdir(path)
+                # read
+                for file in files:
+                    if file.endswith(".csv"):
+                        self.__read_csv(os.path.join(path, file))
+            elif os.path.isfile(path):
+                    self.__read_csv(path)
         logger.info("Successfully load data")
 
         # sort loaded data
@@ -107,30 +107,30 @@ class MplPlot:
         )
         return fig, ax
 
-    def pca(self, ax=None, n_components: int = 2, save: str="yes", save_path: str | None=None, dpi: int | None = None):
+    def pca(self, ax=None, n_components: int = 2, save: bool=False, save_path: str | None=None, dpi: int | None = None):
         full = discriminate(self.__mat, method="pca", n_components=n_components)
         if ax is None:
             fig, ax = self.init_plot(1, 1, "scatter")
         scatter(data=full, cell_range=self.__cell_range, ax=ax, title="PCA")
-        if save=="yes":
+        if save is True:
             self.save_plot(save_path=save_path, dpi=dpi, name="pca")
         return to_mat(full, self.__cell_range)
 
-    def tsne(self, ax=None, n_components: int = 2, save: str="yes", save_path: str | None=None, dpi: int | None = None):
+    def tsne(self, ax=None, n_components: int = 2, save: bool=False, save_path: str | None=None, dpi: int | None = None):
         full = discriminate(self.__mat, method="tsne", n_components=n_components)
         if ax is None:
             fig, ax = self.init_plot(1, 1, "scatter")
         scatter(data=full, cell_range=self.__cell_range, ax=ax, title="t-SNE")
-        if save=="yes":
+        if save is True:
             self.save_plot(save_path=save_path, dpi=dpi, name="tsne")
         return to_mat(full, self.__cell_range)
 
-    def umap(self, ax=None, n_components: int = 2, save: str="yes", save_path: str | None=None, dpi: int | None = None):
+    def umap(self, ax=None, n_components: int = 2, save: bool=False, save_path: str | None=None, dpi: int | None = None):
         full = discriminate(self.__mat, method="umap", n_components=n_components)
         if ax is None:
             fig, ax = self.init_plot(1, 1, "scatter")
         scatter(data=full, cell_range=self.__cell_range, ax=ax, title="UMAP")
-        if save=="yes":
+        if save is True:
             self.save_plot(save_path=save_path, dpi=dpi, name="umap")
         return to_mat(full, self.__cell_range)
 
@@ -148,7 +148,7 @@ class MplPlot:
             else:
                 raise ValueError(f"method {m} is not supported")
 
-    def heatmap(self, ax=None, fig=None, save: str="yes", save_path: str | None=None, dpi: int | None = None, **kwargs):
+    def heatmap(self, ax=None, fig=None, save: bool=False, save_path: str | None=None, dpi: int | None = None, **kwargs):
         if ax is None:
             fig, ax = self.init_plot(1, 1, "heatmap")
         heatmap(
@@ -159,26 +159,26 @@ class MplPlot:
             title="Heatmap",
             **kwargs,
         )
-        if save=="yes":
+        if save is True:
             self.save_plot(save_path=save_path, dpi=dpi, name="heatmap")
 
-    def volcano(self, name1: str, name2: str, ax=None, save="yes", save_path: str | None=None, dpi: int | None = None, **kwargs):
+    def volcano(self, name1: str, name2: str, ax=None, save: bool=False, save_path: str | None=None, dpi: int | None = None, **kwargs):
         mat1 = self.__mat[name1]
         mat2 = self.__mat[name2]
         if ax is None:
             fig, ax = self.init_plot(1, 1, "scatter")
         volcano(mat1, mat2, name1, name2, ax=ax, **kwargs)
-        if save=="yes":
+        if save is True:
             self.save_plot(save_path=save_path, dpi=dpi, name="volcano")
 
-    def box(self, ax=None, method: str = "tsne", save="yes", save_path: str | None=None, dpi: int | None = None):
+    def box(self, ax=None, method: str = "tsne", save: bool=False, save_path: str | None=None, dpi: int | None = None):
         if ax is None:
             fig, ax = self.init_plot(1, 1, "scatter")
         full_data = discriminate(self.__mat, method=method, n_components=1)
         dict_data = to_mat(full_data, self.__cell_range, n_components=1)
         h_statistic, p_value = k_w_test(dict_data)
         box(dict_data, ax=ax, h_statistic=h_statistic, p_value=p_value)
-        if save=="yes":
+        if save is True:
             self.save_plot(save_path=save_path, dpi=dpi, name="box")
         return dict_data
 

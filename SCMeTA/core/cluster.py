@@ -15,6 +15,7 @@ from SCMeTA.method import (
     filter_mat,
     normalize,
     round_columns,
+    convert_format
 )
 from SCMeTA.batch import combat_batch_correction
 from SCMeTA.method.fill import fill_mat
@@ -53,7 +54,7 @@ class Process:
             path: File path or directory path.
             file_name: File Name, cannot work if path is a directory.
             data_type: Data type, thermo_raw file / water wiff file / mzML file / processed csv file are supported.
-            method: Method to load the data, default "MultiThread", can be "one by one".
+            method: Method to load the data, default "MultiThread", can be "one by one", "MultiProcess".
         """
         self.data.update(load_data(path, file_name, data_type, method))
         self.__dir = os.path.dirname(path)
@@ -80,22 +81,27 @@ class Process:
         Args:
             path: File path or directory path.
             file_name: File Name, cannot work if path is a directory.
-            file_type:
+            file_type: target file type, default "cell_mat", other types saved in SCData is also supported.
 
         Returns:
 
         """
-        if os.path.isdir(path):
-            for file in os.listdir(path):
-                if file.endswith(".csv"):
-                    file_name = os.path.basename(file).split(".")[0]
-                    data = pd.read_csv(os.path.join(path, file), index_col=0)
-                    data.columns = [float(i) for i in data.columns]
-                    self.data[file_name] = SCData(name=file_name, cell_mat=data)
+        if file_type in ["cell_mat", "mat", "process", "raw"]:
+            if os.path.isdir(path):
+                for file in os.listdir(path):
+                    if file.endswith(".csv"):
+                        file_name = os.path.basename(file).split(".")[0]
+                        data = pd.read_csv(os.path.join(path, file), index_col=0)
+                        data.columns = [float(i) for i in data.columns]
+                        self.data[file_name] = SCData(name=file_name).__setattr__(file_type, data)
+            elif os.path.isfile(path) and path.endswith(".csv"):
+                data = pd.read_csv(path, index_col=0)
+                data.columns = [float(i) for i in data.columns]
+                self.data[file_name] = SCData(name=file_name).__setattr__(file_type, data)
+            else:
+                raise ValueError("File not found or not a csv file.")
         else:
-            data = pd.read_csv(path, index_col=0)
-            data.columns = [float(i) for i in data.columns]
-            self.data[file_name] = SCData(name=file_name, cell_mat=data)
+            raise ValueError(f"File_type{file_type} not found in SCData. Choose from ['cell_mat', 'mat', 'process', 'raw']")
 
 
     def offset_preprocess(
@@ -378,6 +384,54 @@ class Process:
             self.data[file_name].clear()
             print(f"only for {file_name}")
         logger.info("Memory cleared")
+
+    def FormatConvert(
+            self, 
+            path: str | None = None,
+            data_type: str = "cell_mat",
+            type: str = "MetaboAnalyst",
+            specify_label: bool = False
+            ):
+        """
+        Convert the data to the specified format for further analysis in other softwares or websites like MetaboAnalyst.
+        Args:
+            path: Path to .csv like data. If none, SCData will be processed.
+            data_type: File type, default "cell_mat", other types saved in SCData is also supported.
+        """
+        indict = {}
+        outdf = pd.DataFrame()
+
+        # Load data from path if path is not None
+        if path is not None:
+            self.load_processed(path=path, file_type=data_type)
+        
+        # indict = self.data, for convert_format
+        if data_type in ["cell_mat", "mat", "process", "raw"]:
+            indict = {name: self.data[name].__getattribute__(data_type) for name in self.data.keys()}
+        else:
+            raise ValueError("Data type not found in SCData. Choose from ['cell_mat', 'mat', 'process', 'raw']")
+
+        # Optional: Specify the label
+        if specify_label:
+            logger.info("Specify the label.")
+            print(f"Label: {indict.keys()}")
+            label = input("Please input the label for each file by order, separated by comma: ")
+            indict = {key: value for key, value in zip(label.split(","), indict.values())}
+            print(f"Label changed to {indict.keys()}.")
+
+        outdf = convert_format(indict=indict, type=type)
+
+        if self.__dir is None:
+            dir_path = path
+        else:
+            dir_path = self.__dir
+        if dir_path is None:
+            raise ValueError("Path is None, please specify the path.")
+        
+        if not os.path.exists(dir_path):
+            os.mkdir(dir_path)
+        outdf.to_csv(os.path.join(dir_path, f"{type}.csv"))
+
 
     def save(self, file_name: str | None = None, data_type: str = "cell_mat", path: str | None = None):
         """

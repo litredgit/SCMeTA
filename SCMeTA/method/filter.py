@@ -12,7 +12,10 @@ def sum_df(df: pd.DataFrame, scan: int) -> pd.DataFrame:
 
 def peaks_combine(_raw: pd.DataFrame, resolution: float = 0.01) -> pd.DataFrame:
     # round mass to given resolution
-    _raw["Mass"] = np.around(_raw["Mass"], decimals=np.log10(1 / resolution))
+    # _raw["Mass"] = np.around(_raw["Mass"], decimals=np.log10(1 / resolution))
+    # to be consistent with the original code, we use floor, as 'around' does not solve the issue of combining peaks
+    _raw["Mass"] = np.floor(_raw["Mass"] / resolution) * resolution
+
 
     # combine peaks with the same mass
     scans = _raw.index.unique()

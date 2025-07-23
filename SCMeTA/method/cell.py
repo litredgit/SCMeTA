@@ -9,12 +9,11 @@ def find_cell(
     
     if refer_mz not in mat.columns:
         raise ValueError(f"refer_mz {refer_mz} not found in mat columns.")
-    xic = mat[refer_mz].values  # extract NumPy Ndarray
-    xic = np.nan_to_num(xic, nan=0.0)  # Replace NaN with zero
+    xic = mat[refer_mz]  # extract NumPy Ndarray
 
     # find cell index
     max_intensity = np.max(xic)
-    cell_region = np.where(xic >= max_intensity* max_ratio)[0]
+    cell_region = xic.index[xic > max_intensity * max_ratio].to_numpy()
     if len(cell_region) == 0:
         raise ValueError("No cell found.")
 

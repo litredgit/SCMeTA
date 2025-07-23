@@ -51,10 +51,10 @@ def path_from_database(path: str) -> str:
     return os.path.join(base_path, path)
 
 
-def read_files_in_parallel(paths: list[str], names = None, data_type: str = "thermo", multi_method: str = "Multiprocess") -> dict[str, SCData]:
+def read_files_in_parallel(paths: list[str], names = None, data_type: str = "thermo", multi_method: str = "MultiThread") -> dict[str, SCData]:
     if names is None:
         names = [get_name_from_path(path) for path in paths]
-    if multi_method == "MuliProcess":
+    if multi_method == "MultiProcess":
         args = dict(zip(names, paths))
         mp = MultiProcessing()
         results = mp.run(func=FUNC_DICT[data_type], data=args)
@@ -68,7 +68,7 @@ def read_files_in_parallel(paths: list[str], names = None, data_type: str = "the
 
 
 def load_data(
-    path: str | dict, name: str | None = None, data_type: str = "thermo", method: str = "MultiProcess"
+    path: str | dict, name: str | None = None, data_type: str = "thermo", method: str = "MultiThread"
 ) -> dict[str, SCData]:
     if isinstance(path, str):
         if os.path.isdir(path):

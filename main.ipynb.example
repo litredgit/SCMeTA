@@ -48,7 +48,7 @@
     "1. `path: str`\n",
     "2. `file_name: str | None = None`\n",
     "3. `data_type: str = \"thermo\"`: Data type, default`\"thermo\"` .raw file, can be `\"waters\"` .wiff file / `\"mzML\"` .mzML file / `\"process\"` .csv file.\n",
-    "4. `method str = \"MultiProcess\"`: Method to load, can be `\"MultiThread\"`, `\"one by one\"`.\n",
+    "4. `method str = \"MultiThread\"`: Method to load, can be `\"MultiProcess\"`, `\"one by one\"`.\n",
     "\n",
     "Returns:\n",
     "1. `self.data: dict[file_name, SCData]`\n",

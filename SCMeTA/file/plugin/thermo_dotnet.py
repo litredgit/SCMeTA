@@ -4,8 +4,9 @@ import numpy as np
 import pandas as pd
 import tqdm
 
-from pythonnet import load
-load("coreclr")
+# from pythonnet import load
+# load("coreclr")
+# error on linux ,may work on docker
 import clr
 from System import String
 

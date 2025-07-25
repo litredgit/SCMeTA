@@ -180,7 +180,6 @@ class Process:
             self.data[file_name].process = filter_occ(
                 self.data[file_name].raw.copy(), resolution, count
             )
-            print(f"only for {file_name}")
         logger.info(f"Combine peaks rounded to {resolution}, Filter out mz occurred < {count}.")
 
     def gen_mat(self, file_name: str | None = None):
@@ -189,7 +188,6 @@ class Process:
                 ms_data.mat = to_mat(data=ms_data.process, min_intensity=PARAMETERS.min_intensity)
         else:
             self.data[file_name].mat = to_mat(data=self.data[file_name].process, min_intensity=PARAMETERS.min_intensity)
-            print(f"only for {file_name}")
         logger.info("Data format converted to crosstab.")
         print(f"before:\n{self.data[file_name].process.head(5) if file_name else next(iter(self.data.values())).process.head(5)}\nafter:\n{self.data[file_name].mat.iloc[:5, :5] if file_name else next(iter(self.data.values())).mat.iloc[:5, :5]}")
 
@@ -201,7 +199,6 @@ class Process:
             self.data[file_name].mat = round_columns(
                 self.data[file_name].mat, resolution_intensity
             )
-            print(f"only for {file_name}")
         logger.info(f"Intensity rounded to resolution_intensity{resolution_intensity}.")
 
     def denoise(self, max_ratio: float = PARAMETERS.maxratio, file_name: str | None = None):
@@ -216,17 +213,15 @@ class Process:
                 ms_data.cell_pos = find_cell(
                     ms_data.mat, self.ref_mz, max_ratio=max_ratio
                 )
-                logger.info(f"Find cells with mz{self.ref_mz} > {max_ratio} * max intensity.")
                 ms_data.mat = noise_subtract(ms_data.mat, ms_data.cell_pos)
         else:
             ms_data = self.data[file_name]
             ms_data.cell_pos = find_cell(
                 ms_data.mat, self.ref_mz, max_ratio=max_ratio
             )
-            print(f"only for {file_name}")
-            logger.info(f"Find cells with mz{self.ref_mz} > {max_ratio} * max intensity.")
             ms_data.mat = noise_subtract(ms_data.mat, ms_data.cell_pos)
             self.data[file_name] = ms_data
+        logger.info(f"Find cells with mz{self.ref_mz} > {max_ratio} * max intensity.")
         logger.info("Noise subtracted!")
 
     def merge_cell(self, adjacent: int = PARAMETERS.adjacent, file_name: str | None = None):
@@ -248,7 +243,6 @@ class Process:
                 self.data[file_name].cell_pos,
                 adjacent=adjacent,
             )
-            print(f"only for {file_name}")
         logger.info(f"Merge adjacent cells less than {adjacent}.")
 
     def filter_assem(self, snr: float = PARAMETERS.snr, file_name: str | None = None):
@@ -270,7 +264,6 @@ class Process:
                 self.data[file_name].cell_pos,
                 snr,
             )
-            print(f"only for {file_name}")
         logger.info(f"Filter out the data with SNR < {snr}.")
 
     def gen_process(self, file_name: str | None = None):
@@ -299,8 +292,6 @@ class Process:
         """
         if name_list is None:
             name_list = list(self.data.keys())
-        else:
-            print(f"only for {','.join(name_list)}")
         mat_list = [self.data[name].cell_mat for name in name_list]
         total_mat = list(filter_mat(mat_list, threshold, lock_mz, method))
         for index, name in enumerate(name_list):
@@ -320,7 +311,6 @@ class Process:
             data[file_name].cell_mat = normalize(
                 data[file_name].cell_mat, normalize_method, mz=self.ref_mz
             )
-            print(f"only for {file_name}")
         logger.info(f"Normalized by {normalize_method}.")
 
     def fill(self,
@@ -335,7 +325,6 @@ class Process:
             data[file_name].cell_mat = fill_mat(
                 data[file_name].cell_mat, fillna_method
             )
-            print(f"only for {file_name}")
         logger.info(f"Fillna with {fillna_method}.")
 
     def combat(self, data: dict[str, SCData], tag_list: list[str], file_name: str | None = None):
@@ -382,7 +371,6 @@ class Process:
                 value.clear()
         else:
             self.data[file_name].clear()
-            print(f"only for {file_name}")
         logger.info("Memory cleared")
 
     def FormatConvert(
@@ -503,8 +491,9 @@ class Process:
                 if file not in list(self.data.keys()):
                     raise ValueError(f"{file} not in data")
                 
+            logger.info(f"For files in {file_list}.")
             # do offset and cut
-            if offset is not None:
+            if offset is not None: 
                 self.offset_preprocess(file_list, offset, offset_method)
             if cut_range is not None:
                 self.cut_preprocess(file_list, cut_range, cut_method)

@@ -72,8 +72,8 @@ def load_data(
 ) -> dict[str, SCData]:
     if isinstance(path, str):
         if os.path.isdir(path):
-            files = os.listdir(path)
-            paths = [os.path.join(path, file) for file in files if is_type(file, data_type)]
+            files = [file for file in os.listdir(path) if is_type(file, data_type)]
+            paths = [os.path.join(path, file) for file in files]
             if method == "one by one":
                 return {name:FUNC_DICT[data_type](name, path) for name, path in zip(files, paths) if is_type(name, data_type)} 
             else:

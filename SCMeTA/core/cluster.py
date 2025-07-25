@@ -191,7 +191,7 @@ class Process:
             self.data[file_name].mat = to_mat(data=self.data[file_name].process, min_intensity=PARAMETERS.min_intensity)
             print(f"only for {file_name}")
         logger.info("Data format converted to crosstab.")
-        print(f"before:\n{self.data[file_name].process.head(5) if file_name else next(iter(self.data.values())).process.head(5)}\nafter:\n{self.data[file_name].mat.head(5) if file_name else next(iter(self.data.values())).mat.head(5)}")
+        print(f"before:\n{self.data[file_name].process.head(5) if file_name else next(iter(self.data.values())).process.head(5)}\nafter:\n{self.data[file_name].mat.iloc[:5, :5] if file_name else next(iter(self.data.values())).mat.iloc[:5, :5]}")
 
     def round_mat(self, resolution_intensity: float = PARAMETERS.resolution_intensity, file_name: str | None = None):
         if file_name is None:
@@ -544,7 +544,6 @@ class Process:
         self.info()
         self.clear_memory()
         logger.info("Process finished.")
-        return self.data
 
     def post_process(
             self,

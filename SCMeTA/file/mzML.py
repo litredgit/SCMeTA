@@ -1,9 +1,9 @@
-import pymzml
+import pymzml, os
 import pandas as pd
 from SCMeTA.file.format import SCData
-from pathlib import Path
 from tqdm import tqdm
 import numpy as np
+from SCMeTA.config import PARAMETERS
 
 # def _parse_mzml(file_path: str) -> pd.DataFrame:
 #     run = pymzml.run.Reader(file_path)
@@ -36,7 +36,7 @@ import numpy as np
 #     # df.set_index("Scan", inplace=True)  # 将 Scan 设为索引
 #     # return df
 #     return pd.DataFrame(data) #这版是可以用的
-def _parse_mzml(file_path: str, max_scans: int = None) -> pd.DataFrame:
+def _parse_mzml(file_path: str, scan_range: tuple[int] = (PARAMETERS.scan_start, PARAMETERS.scan_end)) -> pd.DataFrame:
     """
     优化版mzML解析器 (速度提升10-20倍)
     参数：
@@ -45,7 +45,7 @@ def _parse_mzml(file_path: str, max_scans: int = None) -> pd.DataFrame:
     run = pymzml.run.Reader(
         file_path,
         obo_version="4.1.33",  # 使用最新OBO定义加速
-        build_index_from_scratch=False,  # 禁用耗时索引
+        build_index_from_scratch=True,  # 禁用耗时索引
         MS_precisions={1: 5e-6, 2: 20e-6}  # 设置精度减少计算
     )
 
@@ -54,11 +54,12 @@ def _parse_mzml(file_path: str, max_scans: int = None) -> pd.DataFrame:
     scan_nums_append = scan_nums.append
     masses_append = masses.append
     intensities_append = intensities.append
+    file_name = os.path.splitext(os.path.basename(file_path))[0]
 
     # 使用迭代器+进度条
-    for scan_num, spec in enumerate(tqdm(run, desc="Parsing mzML")):
-        if max_scans and scan_num >= max_scans:
-            break
+    for scan_num, spec in enumerate(tqdm(run, desc=f"Parsing {file_name}")):
+        if scan_range and not (scan_range[0] <= scan_num <= scan_range[1]):
+            continue
 
         mz_array = spec.mz  # 直接访问numpy数组
         i_array = spec.i
@@ -74,7 +75,6 @@ def _parse_mzml(file_path: str, max_scans: int = None) -> pd.DataFrame:
         "Intensity": np.concatenate(intensities),
         "Scan": np.concatenate(scan_nums)
     })
-    df.columns = df.columns.astype(str)
 
 
 # def load_mzml_to_scdata(file_path: str) -> SCData:
@@ -117,7 +117,7 @@ def load_mzML_data(name, path) -> SCData:
     # load mzML file with Scan as index
     if not path.lower().endswith(".mzml"):
         raise ValueError("File is not a mzML file")
-    df = _parse_mzml(path)
+    df = _parse_mzml(file_path=path, scan_range=(PARAMETERS.scan_start, PARAMETERS.scan_end))
     scdata.raw = df[["Mass", "Intensity", "Scan"]].set_index("Scan")
 
     # initialize blank attributes

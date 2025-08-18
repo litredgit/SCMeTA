@@ -10,6 +10,9 @@ Snr = 3.0
 Threshold = 0.2
 Lock = false
 min_intensity = 0
+scan_range = False
+scan_start = 9000
+scan_end = 12000
 
 [METABOLITE]
 Online = False

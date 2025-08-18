@@ -1,5 +1,6 @@
 # Data Process Package
 pyRawTools
+pymzml
 tqdm
 pythonnet
 numpy

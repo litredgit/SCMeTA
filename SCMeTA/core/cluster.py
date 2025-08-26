@@ -360,7 +360,7 @@ class Process:
                 )
             )
 
-    def clear_memory(self, file_name: str | None = None):
+    def clear_memory(self, file_name: str | None = None, attributes:list[str] | None = None):
         """
         Clear the memory of the MSProcess
         Args:
@@ -368,9 +368,9 @@ class Process:
         """
         if file_name is None:
             for value in self.data.values():
-                value.clear()
+                value.clear(attributes=attributes)
         else:
-            self.data[file_name].clear()
+            self.data[file_name].clear(attributes=attributes)
         logger.info("Memory cleared")
 
     def FormatConvert(
@@ -459,6 +459,7 @@ class Process:
         count: int = PARAMETERS.count,
         offset_method: str = "same",
         cut_method: str = "same",
+        clear_mem: bool = False
         ):
         """
         Pre-process the data, including peak_combine, offset, cut, and round.
@@ -470,6 +471,7 @@ class Process:
             count: Minimum occurrence of the data, default 10.
             offset_method: Method to set offset, default "same", can be "separatedly".
             cut_method: Method to cut the data, default "same", can be "separatedly".
+            clear_mem: If True, clear the SCData.raw after pre_process, default False.
         Returns:
 
         """
@@ -499,6 +501,8 @@ class Process:
                 self.cut_preprocess(file_list, cut_range, cut_method)
 
         self.filter_occ(resolution=resolution, count=count)
+        if clear_mem:
+            self.clear_memory(attributes=["raw"])
         logger.info("Pre-process finished.")
 
     def process(
@@ -509,7 +513,8 @@ class Process:
             resolution_intensity: float = PARAMETERS.resolution_intensity,
             threshold: float = PARAMETERS.threshold,
             lock_mz: bool = PARAMETERS.lock,
-            filter_method: str = "all"
+            filter_method: str = "all",
+            clear_mem: bool = False
     ):
         """
         Args:
@@ -520,18 +525,29 @@ class Process:
             threshold: Threshold of the data
             lock_mz: If True, the mz you select in lock mz file will be locked
             filter_method: Method of filtering
+            clear_mem: If True, clear the SCData.process and SCData.mat after process, default False(clear mat).
         """
         if not self.data:
             raise ValueError("No data loaded")
-
-        self.gen_mat()
-        self.round_mat(resolution_intensity=resolution_intensity)
-        self.denoise(max_ratio=max_ratio)
-        self.merge_cell(adjacent=adjacent)
-        self.filter_assem(snr=snr)
-        self.filter_mat(threshold=threshold, lock_mz=lock_mz, method=filter_method)
-        self.info()
-        self.clear_memory()
+        if not clear_mem:
+            self.gen_mat()
+            self.round_mat(resolution_intensity=resolution_intensity)
+            self.denoise(max_ratio=max_ratio)
+            self.merge_cell(adjacent=adjacent)
+            self.filter_assem(snr=snr)
+            self.filter_mat(threshold=threshold, lock_mz=lock_mz, method=filter_method)
+            self.info()
+            self.clear_memory()
+        else:
+            self.gen_mat()
+            self.clear_memory(attributes=["process"])
+            self.round_mat(resolution_intensity=resolution_intensity)
+            self.denoise(max_ratio=max_ratio)
+            self.merge_cell(adjacent=adjacent)
+            self.filter_assem(snr=snr)
+            self.clear_memory(attributes=["mat"])
+            self.filter_mat(threshold=threshold, lock_mz=lock_mz, method=filter_method)
+            self.info()
         logger.info("Process finished.")
 
     def post_process(

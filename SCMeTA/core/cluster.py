@@ -1,9 +1,5 @@
 import os
-import logging
-
 import pandas as pd
-import numpy as np
-
 from SCMeTA.method import (
     filter_occ,
     to_mat,
@@ -20,12 +16,10 @@ from SCMeTA.method import (
 from SCMeTA.batch import combat_batch_correction
 from SCMeTA.method.fill import fill_mat
 from SCMeTA.file import load_data, load_from_database
-from SCMeTA.config import PARAMETERS
+from SCMeTA.config import PARAMETERS, setup_logger
 from SCMeTA.accelerate import MultiProcessing
 
 from SCMeTA.file.format import SCData
-
-logger = logging.getLogger(__name__)
 
 class Process:
     def __init__(
@@ -39,7 +33,6 @@ class Process:
         self.ref_mz: float = ref_mz
         self.__dir = None
         self.__mp = MultiProcessing()
-        pass
 
     def load(
         self,
@@ -56,11 +49,12 @@ class Process:
             data_type: Data type, thermo_raw file / water wiff file / mzML file / processed csv file are supported.
             method: Method to load the data, default "MultiThread", can be "one by one", "MultiProcess".
         """
+        self.logger = setup_logger(log_file=os.path.dirname(path) + "/process.log")
+        self.logger.info(f"Load files in path {[path]}.")
         self.data.update(load_data(path, file_name, data_type, method))
         self.__dir = os.path.dirname(path)
         if not self.data:
             raise ValueError("No data loaded")
-        logger.info(f"Loaded files in path {[path]}.")
 
     def load_database(self, file_id: int | list[int]):
         """
@@ -128,7 +122,7 @@ class Process:
                 print(f"Set Offset {offset} in {file}.")
         else:
             raise ValueError("offset_method must be 'same' or 'separatedly'")
-        logger.info(f"Set Offset done.")
+        self.logger.info(f"Set Offset done.")
             
     def cut_preprocess(
         self,
@@ -157,7 +151,7 @@ class Process:
                 print(f"Cut range {cut_range[0]} to {cut_range[1]} in {file}.")
         else:
             raise ValueError("cut_method must be 'same' or 'separatedly'")
-        logger.info("Cut range done.")
+        self.logger.info("Cut range done.")
         
     def filter_occ(
         self,
@@ -172,6 +166,7 @@ class Process:
             resolution: Resolution of the data, default 0.01
             file_name: File name, if None, all files will be processed.
         """
+        self.logger.info(f"Combine mz rounded to res: {resolution}, Filter mz occurred < count: {count}.")
         if file_name is None:
             # self.__mp.run(self.data, _filter_occ, resolution, count)
             for ms_data in self.data.values():
@@ -180,18 +175,17 @@ class Process:
             self.data[file_name].process = filter_occ(
                 self.data[file_name].raw.copy(), resolution, count
             )
-        logger.info(f"Combine peaks rounded to {resolution}, Filter out mz occurred < {count}.")
 
     def gen_mat(self, file_name: str | None = None):
+        self.logger.info("Convert data format to crosstab.")
         if file_name is None:
             for ms_data in self.data.values():
                 ms_data.mat = to_mat(data=ms_data.process, min_intensity=PARAMETERS.min_intensity)
         else:
             self.data[file_name].mat = to_mat(data=self.data[file_name].process, min_intensity=PARAMETERS.min_intensity)
-        logger.info("Data format converted to crosstab.")
-        print(f"before:\n{self.data[file_name].process.head(5) if file_name else next(iter(self.data.values())).process.head(5)}\nafter:\n{self.data[file_name].mat.iloc[:5, :5] if file_name else next(iter(self.data.values())).mat.iloc[:5, :5]}")
 
     def round_mat(self, resolution_intensity: float = PARAMETERS.resolution_intensity, file_name: str | None = None):
+        self.logger.info(f"Round intensity to res_int: {resolution_intensity}.")
         if file_name is None:
             for ms_data in self.data.values():
                 ms_data.mat = round_columns(ms_data.mat, resolution_intensity)
@@ -199,7 +193,6 @@ class Process:
             self.data[file_name].mat = round_columns(
                 self.data[file_name].mat, resolution_intensity
             )
-        logger.info(f"Intensity rounded to resolution_intensity{resolution_intensity}.")
 
     def denoise(self, max_ratio: float = PARAMETERS.maxratio, file_name: str | None = None):
         """
@@ -208,6 +201,7 @@ class Process:
             max_ratio: If ref_mz_intensity > max_ratio * ref_mz_max_intensity, the cell will be extracted
             file_name: File name, if None, all files will be processed.
         """
+        self.logger.info(f"Find cells: ref_mz: {self.ref_mz} > max_ratio: {max_ratio} * max intensity and subtract noise.")
         if file_name is None:
             for ms_data in self.data.values():
                 ms_data.cell_pos = find_cell(
@@ -221,8 +215,6 @@ class Process:
             )
             ms_data.mat = noise_subtract(ms_data.mat, ms_data.cell_pos)
             self.data[file_name] = ms_data
-        logger.info(f"Find cells with mz{self.ref_mz} > {max_ratio} * max intensity.")
-        logger.info("Noise subtracted!")
 
     def merge_cell(self, adjacent: int = PARAMETERS.adjacent, file_name: str | None = None):
         """
@@ -232,6 +224,7 @@ class Process:
             If number is larger than the number of cells, the data will be dropped.
             file_name: File name, if None, all files will be processed.
         """
+        self.logger.info(f"Merge cell < adjacent: {adjacent} scans.")
         if file_name is None:
             for ms_data in self.data.values():
                 ms_data.cell_mat = merge_cell(
@@ -243,7 +236,6 @@ class Process:
                 self.data[file_name].cell_pos,
                 adjacent=adjacent,
             )
-        logger.info(f"Merge adjacent cells less than {adjacent}.")
 
     def filter_assem(self, snr: float = PARAMETERS.snr, file_name: str | None = None):
         """
@@ -252,6 +244,7 @@ class Process:
             snr: Minimum SNR of the data, default 3.0
             file_name: File name, if None, all files will be processed.
         """
+        self.logger.info(f"Filter data with SNR < {snr}.")
         if file_name is None:
             for ms_data in self.data.values():
                 ms_data.cell_mat = filter_assem(
@@ -264,7 +257,6 @@ class Process:
                 self.data[file_name].cell_pos,
                 snr,
             )
-        logger.info(f"Filter out the data with SNR < {snr}.")
 
     def gen_process(self, file_name: str | None = None):
         if file_name is None:
@@ -290,18 +282,19 @@ class Process:
             lock_mz: If True, the mz you select in lock mz file will be locked, default False.
             method: Method to filter the data, default "all", can be "all", "any", "none".
         """
+        self.logger.info(f"Filter mz occurred > threshold: {threshold} * cell_count.")
         if name_list is None:
             name_list = list(self.data.keys())
         mat_list = [self.data[name].cell_mat for name in name_list]
         total_mat = list(filter_mat(mat_list, threshold, lock_mz, method))
         for index, name in enumerate(name_list):
             self.data[name].cell_mat = total_mat[index]
-        logger.info(f"Filter out mz occurred > {threshold} * cell_count.")
 
     def normalize(self,
                   data: dict[str, SCData],
                   normalize_method: list[str],
                   file_name: str | None = None):
+        self.logger.info(f"Normalize by {normalize_method}.")
         if file_name is None:
             for ms_data in data.values():
                 ms_data.cell_mat = normalize(
@@ -311,13 +304,13 @@ class Process:
             data[file_name].cell_mat = normalize(
                 data[file_name].cell_mat, normalize_method, mz=self.ref_mz
             )
-        logger.info(f"Normalized by {normalize_method}.")
 
     def fill(self,
              data: dict[str, SCData],
              file_name: str | None = None,
              fillna_method: str = "knn"
              ):
+        self.logger.info(f"Fill NaN by {fillna_method}.")
         if file_name is None:
             for ms_data in data.values():
                 ms_data.cell_mat = fill_mat(ms_data.cell_mat, fillna_method)
@@ -325,7 +318,6 @@ class Process:
             data[file_name].cell_mat = fill_mat(
                 data[file_name].cell_mat, fillna_method
             )
-        logger.info(f"Fillna with {fillna_method}.")
 
     def combat(self, data: dict[str, SCData], tag_list: list[str], file_name: str | None = None):
         data = combat_batch_correction(data, tag_list)
@@ -339,7 +331,7 @@ class Process:
         """
         if file_name is None:
             for ms_data in self.data.values():
-                logger.info(
+                self.logger.info(
                     " ".join(
                         [
                             f"File name: {ms_data.name}",
@@ -350,7 +342,7 @@ class Process:
                 )
         else:
             ms_data = self.data[file_name]
-            logger.info(
+            self.logger.info(
                 " ".join(
                     [
                         f"File name: {ms_data.name}",
@@ -366,12 +358,22 @@ class Process:
         Args:
             file_name: File name, if None, all files will be processed.
         """
+        if attributes is None:
+            attributes_to_clear = ["mat"]
+        else:
+            attributes_to_clear = []
+            for attr in attributes:
+                if hasattr(self, attr):
+                    attributes_to_clear.append(attr)
+                else:
+                    self.logger.warning(f"Attribute '{attr}' does not exist in SCData and will be skipped.")
+
+        self.logger.info(f"Clear attributes: {', '.join(attributes_to_clear)}")
         if file_name is None:
             for value in self.data.values():
-                value.clear(attributes=attributes)
+                value.clear(attributes=attributes_to_clear)
         else:
-            self.data[file_name].clear(attributes=attributes)
-        logger.info("Memory cleared")
+            self.data[file_name].clear(attributes=attributes_to_clear)
 
     def FormatConvert(
             self, 
@@ -401,7 +403,7 @@ class Process:
 
         # Optional: Specify the label
         if specify_label:
-            logger.info("Specify the label.")
+            self.logger.info("Specify the label.")
             print(f"Label: {indict.keys()}")
             label = input("Please input the label for each file by order, separated by comma: ")
             indict = {key: value for key, value in zip(label.split(","), indict.values())}
@@ -435,6 +437,7 @@ class Process:
         else:
             dir_path = path
 
+        self.logger.info(f"Save data in {dir_path}.")
         if not os.path.exists(dir_path):
             os.mkdir(dir_path)
         if data_type not in ["cell_mat", "mat", "process", "raw"]:
@@ -448,7 +451,6 @@ class Process:
             self.data[file_name].__getattribute__(data_type).to_csv(
                 os.path.join(dir_path, f"{file_name}_{data_type}.csv")
             )
-        logger.info(f"Data saved in {dir_path}.")
 
     def pre_process(
         self,
@@ -475,8 +477,10 @@ class Process:
         Returns:
 
         """
+        self.logger.info("Pre-process begin.")
+
         if offset is None and cut_range is None:
-            logger.info("No offset or cut range provided, skipping offset and cut.")
+            self.logger.info("No offset or cut range.")
         else:
             # convert file_name or self.data.keys() to list
             if isinstance(file_name, str):
@@ -493,7 +497,7 @@ class Process:
                 if file not in list(self.data.keys()):
                     raise ValueError(f"{file} not in data")
                 
-            logger.info(f"For files in {file_list}.")
+            self.logger.info(f"For files in {file_list}.")
             # do offset and cut
             if offset is not None: 
                 self.offset_preprocess(file_list, offset, offset_method)
@@ -503,7 +507,6 @@ class Process:
         self.filter_occ(resolution=resolution, count=count)
         if clear_mem:
             self.clear_memory(attributes=["raw"])
-        logger.info("Pre-process finished.")
 
     def process(
             self,
@@ -529,6 +532,7 @@ class Process:
         """
         if not self.data:
             raise ValueError("No data loaded")
+        self.logger.info("Process begin.")
         if not clear_mem:
             self.gen_mat()
             self.round_mat(resolution_intensity=resolution_intensity)
@@ -548,7 +552,6 @@ class Process:
             self.clear_memory(attributes=["mat"])
             self.filter_mat(threshold=threshold, lock_mz=lock_mz, method=filter_method)
             self.info()
-        logger.info("Process finished.")
 
     def post_process(
             self,
@@ -566,12 +569,12 @@ class Process:
         Returns:
             Dict of MSData
         """
+        self.logger.info("Post process begin.")
         if normalize_method is None:
             normalize_method = ["mz"]
         if data is None:
             data = self.data
         self.normalize(data=data, normalize_method=normalize_method)
         self.fill(data=data, fillna_method=fillna_method)
-        logger.info("Post process finished.")
         # self.combat()
         return data

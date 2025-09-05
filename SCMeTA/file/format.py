@@ -1,8 +1,5 @@
 from dataclasses import dataclass, field
-import logging
 import pandas as pd
-
-logger = logging.getLogger(__name__)
 
 @dataclass
 class SCData:
@@ -17,17 +14,7 @@ class SCData:
     database: bool = False
 
     def clear(self, attributes:list[str] | None = None):
-        if attributes is None:
-            attributes_to_clear = ["mat"]
-        else:
-            attributes_to_clear = []
-            for attr in attributes:
-                if hasattr(self, attr):
-                    attributes_to_clear.append(attr)
-                else:
-                    logger.warning(f"Attribute '{attr}' does not exist in SCData and will be skipped.")
-
-        for attr in attributes_to_clear:
+        for attr in attributes:
             attr_value = getattr(self, attr)
             if isinstance(attr_value, (list, dict, set)):
                 attr_value.clear()
@@ -36,8 +23,6 @@ class SCData:
                 del attr_value
             else:
                 setattr(self, attr, None)
-
-        logger.info(f"Cleared attributes: {', '.join(attributes_to_clear)}")
 
     def set_offset(self, offset: float | None):
         if self.offset is None or self.offset == 0:

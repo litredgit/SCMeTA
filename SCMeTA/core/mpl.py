@@ -1,5 +1,4 @@
 import os
-import logging
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -9,8 +8,7 @@ from SCMeTA.plot.Mpl import scatter, heatmap, line, radar, volcano, bar, box
 from SCMeTA.method import round_rows, round_columns, k_w_test
 from SCMeTA.method.machine_learning import discriminate, to_mat
 from SCMeTA.file import SCData
-
-logger = logging.getLogger(__name__)
+from SCMeTA.config import setup_logger
 
 FIGURE_SIZE = {
     "heatmap": (7, 5),
@@ -25,6 +23,7 @@ class MplPlot:
         self.__mat: dict[str, pd.DataFrame] = {}
         self.__cell_range: dict[str, int] = {}
         self.path: str = path
+        self.logger = setup_logger(log_file=os.path.dirname(path) + "/plt.log")
 
     def __read_csv(self, path: str):
         mat = pd.read_csv(path, index_col=0)
@@ -37,7 +36,8 @@ class MplPlot:
         Args:
             sort_key: sort key, default is "alphabetical"
         """
-        print("current order:\n", self.__mat.keys())
+        self.logger.info(f"Sort data by {sort_key}")
+        print("original order:\n", self.__mat.keys())
         if sort_key == "alphabetical":
             self.__mat = dict(sorted(self.__mat.items(), key=lambda x: x[0]))
         else:
@@ -50,7 +50,6 @@ class MplPlot:
                 self.__mat = {name: self.__mat[name] for name in sorted_list}
             except KeyError as e:
                 raise KeyError(f"KeyError: {e}. Please check the sort key")
-        logger.info(f"Sorted data by {sort_key}")
         print("sorted order:\n", self.__mat.keys())
 
     def load(
@@ -59,6 +58,7 @@ class MplPlot:
             path: str | None = None, 
             sort_key: str="alphabetical"
             ):
+        self.logger.info("load data")
         if data or path:
             pass
         else:
@@ -79,7 +79,6 @@ class MplPlot:
                         self.__read_csv(os.path.join(path, file))
             elif os.path.isfile(path):
                     self.__read_csv(path)
-        logger.info("Successfully load data")
 
         # sort loaded data
         self.sort_loaded_data(sort_key=sort_key)
@@ -195,7 +194,7 @@ class MplPlot:
         scan_list = ms_data.cell_pos.to_list()
         scan = int(input(f"Please Select a scan from:\n {scan_list}"))
         if scan not in scan_list:
-            logger.warning(f"Scan {scan} is not in the scan list")
+            self.logger.warning(f"Scan {scan} is not in the scan list")
             raise ValueError(f"Scan {scan} is not in the scan list")
         line1 = round_columns(ms_data.get_scan(scan, data_type="raw"), axis=0)
         line2 = ms_data.get_scan(scan, data_type="cell_mat")
@@ -211,7 +210,7 @@ class MplPlot:
         cell1 = int(input(f"Please Select a cell from:\n {cell_list}"))
         cell2 = int(input(f"Please Select a cell from:\n {cell_list}"))
         if cell1 not in cell_list or cell2 not in cell_list:
-            logger.warning(f"Cell {cell1} or {cell2} is not in the cell list")
+            self.logger.warning(f"Cell {cell1} or {cell2} is not in the cell list")
             raise ValueError(f"Cell {cell1} or {cell2} is not in the cell list")
         line1 = ms_data.cell_mat.loc[cell1]
         line2 = ms_data.cell_mat.loc[cell2]
@@ -235,4 +234,4 @@ class MplPlot:
         if dpi is None:
             dpi = 300
         plt.savefig(save_path + f"/{name}.jpg", dpi=dpi, bbox_inches='tight')
-        logger.info(f"{name}.jpg saved in {save_path}/, dpi={dpi}")
+        self.logger.info(f"{name}.jpg saved in {save_path}/, dpi={dpi}")

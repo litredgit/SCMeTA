@@ -372,11 +372,10 @@ class Process:
         """
         indict = {}
         outdf = pd.DataFrame()
-        self.logger.info(f"Convert data to {type} format and save in {path if path else self.__dir}.")
         # Load data from path if path is not None
         if path is not None:
             self.load(path=path, data_type="process", target_attr=data_type)
-
+        self.logger.info(f"Convert data to {type} format and save in {path if path else self.__dir}.")
         # indict = self.data, for convert_format
         if data_type in ["cell_mat", "mat", "process", "raw"]:
             indict = {name: self.data[name].__getattribute__(data_type) for name in self.data.keys()}

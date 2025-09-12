@@ -51,9 +51,7 @@ def path_from_database(path: str) -> str:
     return os.path.join(base_path, path)
 
 
-def read_files_in_parallel(paths: list[str], names = None, data_type: str = "thermo", multi_method: str = "MultiThread") -> dict[str, SCData]:
-    if names is None:
-        names = [get_name_from_path(path) for path in paths]
+def read_files_in_parallel(paths: list[str], names: list[str], data_type: str = "thermo", multi_method: str = "MultiThread") -> dict[str, SCData]:
     if multi_method == "MultiProcess":
         args = dict(zip(names, paths))
         mp = MultiProcessing()
@@ -68,21 +66,21 @@ def read_files_in_parallel(paths: list[str], names = None, data_type: str = "the
 
 
 def load_data(
-    path: str | dict, name: str | None = None, data_type: str = "thermo", method: str = "MultiThread"
+    path: str | dict, data_type: str = "thermo", method: str = "MultiThread"
 ) -> dict[str, SCData]:
     if isinstance(path, str):
         if os.path.isdir(path):
-            files = [file for file in os.listdir(path) if is_type(file, data_type)]
-            paths = [os.path.join(path, file) for file in files]
+            files_with_suffix = [file for file in os.listdir(path) if is_type(file, data_type)]
+            paths = [os.path.join(path, file) for file in files_with_suffix]
+            names = [get_name_from_path(file) for file in files_with_suffix]
             if method == "one by one":
-                return {name:FUNC_DICT[data_type](name, path) for name, path in zip(files, paths) if is_type(name, data_type)} 
+                return {name:FUNC_DICT[data_type](name, path) for name, path in zip(names, paths)} 
             else:
-                return read_files_in_parallel(paths=paths, data_type=data_type, multi_method=method)
+                return read_files_in_parallel(paths=paths, names=names, data_type=data_type, multi_method=method)
         elif os.path.isfile(path):
             if not is_type(path, data_type):
                 raise ValueError(f"File {path} is not a {data_type} file")
-            if name is None:
-                name = get_name_from_path(path)
+            name = get_name_from_path(path)
             return {name: FUNC_DICT[data_type](name, path)}
         else:
             raise ValueError("Please provide a valid path")

@@ -37,7 +37,6 @@ class Process:
     def load(
         self,
         path: str,
-        file_name: str | None = None,
         data_type: str = "thermo",
         method: str = "MultiThread"
     ):
@@ -45,13 +44,16 @@ class Process:
         Add a file to the MSProcess
         Args:
             path: File path or directory path.
-            file_name: File Name, cannot work if path is a directory.
-            data_type: Data type, thermo_raw file / water wiff file / mzML file / processed csv file are supported.
+            data_type: Data type, support:
+                "thermo": [".raw", ".txt"],
+                "process": [".csv"],
+                "waters": [".wiff", ".txt"],
+                "mzML": [".mzML", ".mzml"].
             method: Method to load the data, default "MultiThread", can be "one by one", "MultiProcess".
         """
         self.logger = setup_logger(log_file=os.path.dirname(path) + "/process.log")
         self.logger.info(f"Load files in path {[path]}.")
-        self.data.update(load_data(path, file_name, data_type, method))
+        self.data.update(load_data(path, data_type, method))
         self.__dir = os.path.dirname(path)
         if not self.data:
             raise ValueError("No data loaded")
@@ -69,12 +71,11 @@ class Process:
         for key, value in data.items():
             self.data.update(load_data(value, key, "database"))
 
-    def load_processed(self, path, file_name: str | None = None, file_type: str = "cell_mat"):
+    def load_processed(self, path: str, file_type: str = "cell_mat"):
         """
         Load processed data.
         Args:
             path: File path or directory path.
-            file_name: File Name, cannot work if path is a directory.
             file_type: target file type, default "cell_mat", other types saved in SCData is also supported.
 
         Returns:
@@ -84,14 +85,21 @@ class Process:
             if os.path.isdir(path):
                 for file in os.listdir(path):
                     if file.endswith(".csv"):
+                        # read csv file
                         file_name = os.path.basename(file).split(".")[0]
                         data = pd.read_csv(os.path.join(path, file), index_col=0)
                         data.columns = [float(i) for i in data.columns]
-                        self.data[file_name] = SCData(name=file_name).__setattr__(file_type, data)
+                        # set self.data[file_name] to SCData with read data
+                        value_scdata = SCData(name=file_name)
+                        setattr(value_scdata, file_type, data)
+                        self.data[file_name] = value_scdata
             elif os.path.isfile(path) and path.endswith(".csv"):
+                file_name = os.path.basename(path).split(".")[0]
                 data = pd.read_csv(path, index_col=0)
                 data.columns = [float(i) for i in data.columns]
-                self.data[file_name] = SCData(name=file_name).__setattr__(file_type, data)
+                value_scdata = SCData(name=file_name)
+                setattr(value_scdata, file_type, data)
+                self.data[file_name] = value_scdata
             else:
                 raise ValueError("File not found or not a csv file.")
         else:
@@ -390,7 +398,7 @@ class Process:
         """
         indict = {}
         outdf = pd.DataFrame()
-
+        self.logger.info(f"Convert data to {type} format and save in {path if path else self.__dir}.")
         # Load data from path if path is not None
         if path is not None:
             self.load_processed(path=path, file_type=data_type)

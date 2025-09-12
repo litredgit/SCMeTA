@@ -13,7 +13,7 @@ def convert_format(indict: dict[str, pd.DataFrame], type: str = "MetaboAnalyst")
     if type not in typedict:
         raise ValueError(f"Unsupported type: {type}. Supported types are: {list(typedict.keys())}")
     else:
-        indict = sorted(indict.items(), key=lambda x: x[0])
+        indict = dict(sorted(indict.items(), key=lambda x: x[0]))
         outdf = typedict[type](indict)
     return outdf
 

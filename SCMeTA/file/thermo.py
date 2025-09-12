@@ -17,12 +17,12 @@ def load_thermo(path):
     return raw
 
 
-def load_thermo_data(name, path) -> SCData:
+def load_thermo_data(name, path, target_attr) -> SCData:
     data = SCData(name)
     if path.lower().endswith(".raw"):
-        data.raw = load_thermo(path)
+        setattr(data, target_attr, load_thermo(path))
     elif path.lower().endswith(".txt"):
-        data.raw = load_txt(path)
+        setattr(data, target_attr, load_txt(path))
     else:
         raise FileNotFoundError("File not supported")
     return data

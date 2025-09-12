@@ -44,17 +44,13 @@ def _parse_mzml(file_path: str, scan_range: bool = PARAMETERS.scan_range) -> pd.
         "Scan": np.concatenate(scan_nums)
     })
 
-def load_mzML_data(name, path) -> SCData:
+def load_mzML_data(name, path, target_attr) -> SCData:
     scdata = SCData(name=name)
 
     # load mzML file with Scan as index
     if not path.lower().endswith(".mzml"):
         raise ValueError("File is not a mzML file")
     df = _parse_mzml(file_path=path, scan_range=PARAMETERS.scan_range)
-    scdata.raw = df[["Mass", "Intensity", "Scan"]].set_index("Scan")
-
-    # initialize blank attributes
-    scdata.process = pd.DataFrame()
-    scdata.mat = pd.DataFrame()
-
+    attr = df[["Mass", "Intensity", "Scan"]].set_index("Scan")
+    setattr(scdata, target_attr, attr)
     return scdata

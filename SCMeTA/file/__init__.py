@@ -51,13 +51,14 @@ def path_from_database(path: str) -> str:
     return os.path.join(base_path, path)
 
 
-def read_files_in_parallel(paths: list[str], names: list[str], data_type: str = "thermo", multi_method: str = "MultiThread") -> dict[str, SCData]:
+def read_files_in_parallel(paths: list[str], names: list[str], data_type: str = "thermo", target_attr: str = "raw", multi_method: str = "MultiThread") -> dict[str, SCData]:
     if multi_method == "MultiProcess":
         args = dict(zip(names, paths))
+        args[target_attr] = target_attr
         mp = MultiProcessing()
         results = mp.run(func=FUNC_DICT[data_type], data=args)
     elif multi_method == "MultiThread":
-        args = [(name, path) for name, path in zip(names, paths)]
+        args = [(name, path, target_attr) for name, path in zip(names, paths)]
         mt = MultiThreader()
         results = mt.run(FUNC_DICT[data_type], args)
     else:
@@ -66,7 +67,7 @@ def read_files_in_parallel(paths: list[str], names: list[str], data_type: str = 
 
 
 def load_data(
-    path: str | dict, data_type: str = "thermo", method: str = "MultiThread"
+    path: str | dict, data_type: str = "thermo", target_attr: str = "raw", method: str = "MultiThread"
 ) -> dict[str, SCData]:
     if isinstance(path, str):
         if os.path.isdir(path):
@@ -74,14 +75,14 @@ def load_data(
             paths = [os.path.join(path, file) for file in files_with_suffix]
             names = [get_name_from_path(file) for file in files_with_suffix]
             if method == "one by one":
-                return {name:FUNC_DICT[data_type](name, path) for name, path in zip(names, paths)} 
+                return {name:FUNC_DICT[data_type](name, path, target_attr) for name, path in zip(names, paths)} 
             else:
-                return read_files_in_parallel(paths=paths, names=names, data_type=data_type, multi_method=method)
+                return read_files_in_parallel(paths=paths, names=names, data_type=data_type, target_attr = target_attr, multi_method=method)
         elif os.path.isfile(path):
             if not is_type(path, data_type):
                 raise ValueError(f"File {path} is not a {data_type} file")
             name = get_name_from_path(path)
-            return {name: FUNC_DICT[data_type](name, path)}
+            return {name: FUNC_DICT[data_type](name, path, target_attr)}
         else:
             raise ValueError("Please provide a valid path")
     elif isinstance(path, dict):

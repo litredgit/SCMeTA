@@ -38,6 +38,7 @@ class Process:
         self,
         path: str,
         data_type: str = "thermo",
+        target_attr: str = "raw",
         method: str = "MultiThread"
     ):
         """
@@ -49,11 +50,15 @@ class Process:
                 "process": [".csv"],
                 "waters": [".wiff", ".txt"],
                 "mzML": [".mzML", ".mzml"].
+            target_attr: Attribute to load the data, default "raw", other attributes in SCData is also supported.
             method: Method to load the data, default "MultiThread", can be "one by one", "MultiProcess".
         """
         self.logger = setup_logger(log_file=os.path.dirname(path) + "/process.log")
         self.logger.info(f"Load files in path {[path]}.")
-        self.data.update(load_data(path, data_type, method))
+        if target_attr not in ["cell_mat", "mat", "process", "raw"]:
+            target_attr = "raw"
+            self.logger.warning(f"target_attr {target_attr} not supported and will be redirected to \"raw\", choose from (\"raw\", \"process\", \"mat\", \"cell_mat\")")
+        self.data.update(load_data(path, data_type, target_attr, method))
         self.__dir = os.path.dirname(path)
         if not self.data:
             raise ValueError("No data loaded")
@@ -70,41 +75,6 @@ class Process:
         data = load_from_database(file_id)
         for key, value in data.items():
             self.data.update(load_data(value, key, "database"))
-
-    def load_processed(self, path: str, file_type: str = "cell_mat"):
-        """
-        Load processed data.
-        Args:
-            path: File path or directory path.
-            file_type: target file type, default "cell_mat", other types saved in SCData is also supported.
-
-        Returns:
-
-        """
-        if file_type in ["cell_mat", "mat", "process", "raw"]:
-            if os.path.isdir(path):
-                for file in os.listdir(path):
-                    if file.endswith(".csv"):
-                        # read csv file
-                        file_name = os.path.basename(file).split(".")[0]
-                        data = pd.read_csv(os.path.join(path, file), index_col=0)
-                        data.columns = [float(i) for i in data.columns]
-                        # set self.data[file_name] to SCData with read data
-                        value_scdata = SCData(name=file_name)
-                        setattr(value_scdata, file_type, data)
-                        self.data[file_name] = value_scdata
-            elif os.path.isfile(path) and path.endswith(".csv"):
-                file_name = os.path.basename(path).split(".")[0]
-                data = pd.read_csv(path, index_col=0)
-                data.columns = [float(i) for i in data.columns]
-                value_scdata = SCData(name=file_name)
-                setattr(value_scdata, file_type, data)
-                self.data[file_name] = value_scdata
-            else:
-                raise ValueError("File not found or not a csv file.")
-        else:
-            raise ValueError(f"File_type{file_type} not found in SCData. Choose from ['cell_mat', 'mat', 'process', 'raw']")
-
 
     def offset_preprocess(
         self,
@@ -395,14 +365,18 @@ class Process:
         Args:
             path: Path to .csv like data. If none, SCData will be processed.
             data_type: File type, default "cell_mat", other types saved in SCData is also supported.
+            type: Format type, default "MetaboAnalyst", other types is not supported yet.
+            specify_label: If True, specify the label for each file, default False.
+
+        Returns: save a .csv file in the path or self.__dir
         """
         indict = {}
         outdf = pd.DataFrame()
         self.logger.info(f"Convert data to {type} format and save in {path if path else self.__dir}.")
         # Load data from path if path is not None
         if path is not None:
-            self.load_processed(path=path, file_type=data_type)
-        
+            self.load(path=path, data_type="process", target_attr=data_type)
+
         # indict = self.data, for convert_format
         if data_type in ["cell_mat", "mat", "process", "raw"]:
             indict = {name: self.data[name].__getattribute__(data_type) for name in self.data.keys()}
@@ -427,7 +401,7 @@ class Process:
             raise ValueError("Path is None, please specify the path.")
         
         if not os.path.exists(dir_path):
-            os.mkdir(dir_path)
+            os.makedirs(dir_path, exist_ok=True)
         outdf.to_csv(os.path.join(dir_path, f"{type}.csv"))
 
 

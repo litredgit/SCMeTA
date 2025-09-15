@@ -22,9 +22,7 @@ class MplPlot:
         self.__data: dict[str, SCData] | None = None
         self.__mat: dict[str, pd.DataFrame] = {}
         self.__cell_range: dict[str, int] = {}
-        self.path: str = path
-        self.logger = setup_logger(log_file=os.path.dirname(path) + "/plt.log")
-
+        self.path = path
     def __read_csv(self, path: str):
         mat = pd.read_csv(path, index_col=0)
         name = os.path.basename(path).split(".")[0]
@@ -58,7 +56,6 @@ class MplPlot:
             path: str | None = None, 
             sort_key: str="alphabetical"
             ):
-        self.logger.info("load data")
         if data or path:
             pass
         else:
@@ -69,6 +66,7 @@ class MplPlot:
             self.__data = data
             for name, ms_data in data.items():
                 self.__mat[name] = ms_data.cell_mat
+            self.logger = setup_logger(log_file=os.getcwd() + "/plt.log")
         
         if path is not None:
             if os.path.isdir(path):
@@ -79,7 +77,7 @@ class MplPlot:
                         self.__read_csv(os.path.join(path, file))
             elif os.path.isfile(path):
                     self.__read_csv(path)
-
+            self.logger = setup_logger(log_file=os.path.dirname(path) + "/plt.log")
         # sort loaded data
         self.sort_loaded_data(sort_key=sort_key)
         self.__cell_range = {key: mat.shape[0] for key, mat in self.__mat.items()}

@@ -4,6 +4,9 @@ import numpy as np
 import pandas as pd
 import tqdm
 
+from pythonnet import load
+load("mono")
+
 import clr
 from System import String
 

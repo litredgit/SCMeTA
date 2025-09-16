@@ -5,7 +5,7 @@ from itertools import chain
 def collect_noise(mat: pd.DataFrame, cell_pos: list[list], self_sub: bool = False) -> list[pd.DataFrame]:
     noise_list = []
     for index, group in enumerate(cell_pos):
-        noise_start = 1 if index == 0 else group[0] - 1
+        noise_start = 1 if index == 0 else cell_pos[index-1][-1] + 1
         noise_end = group[0] - 1
         noise_mean = mat.loc[noise_start:noise_end].mean()
         noise_list.append(noise_mean)

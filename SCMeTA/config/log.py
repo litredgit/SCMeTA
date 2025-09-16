@@ -34,6 +34,7 @@ def setup_logger(name = __name__, log_file : str | None = None, level=logging.IN
     fmt="[%(asctime)s][\033[32m%(levelname)s\033[0m] %(message)s",
     datefmt="%Y.%m.%d %H:%M"
 )
+    formatter.converter = lambda *args: __import__('time').localtime(*args)
     # File handler (without rotation)
     file_handler = logging.FileHandler(log_file, encoding='utf-8')
     file_handler.setFormatter(formatter)

@@ -41,53 +41,6 @@ def filter_occ(
     process = process[process["Mass"].isin(peaks.index)]
     return process
 
-def filter_mat(
-    mat_list: list[pd.DataFrame], threshold: float = 0.2, lock: bool = False, method: str = "all"
-) -> list[pd.DataFrame]:
-    """Filter matrix by count
-    Args:
-        mat_list (list[pd.DataFrame]): List of matrix
-        threshold (float, optional): Threshold. Defaults to 0.2.
-        lock (bool, optional): Whether to lock the mz list. Defaults to False.
-    Returns:
-        pd.DataFrame: Filtered matrix
-    """
-    if method == "all":
-        count = sum([mat.shape[0] for mat in mat_list]) * threshold
-        large_mat = pd.concat(mat_list)
-        large_mat.sort_index(axis=1, inplace=True)
-        mz_bool = large_mat.count() >= count
-        if lock:
-            include_bool = large_mat.columns.isin(INCLUDE_LIST)
-            exclude_bool = large_mat.columns.isin(EXCLUDE_LIST)
-            mz_bool = mz_bool | include_bool
-            mz_bool = mz_bool & ~exclude_bool
-        mz_list = mz_bool[mz_bool].index
-        # if mat in mat_list doesn't have the mz, it will be filled with NaN
-        mat_list = [mat.reindex(columns=mz_list, fill_value=None) for mat in mat_list]
-
-        mat_list = [mat[mz_list] for mat in mat_list]
-        return mat_list
-    elif method == "any":
-        index_lists = []
-        for mat in mat_list:
-            count = mat.shape[0] * threshold
-            mz_bool = mat.count() >= count
-            if lock:
-                include_bool = mz_bool.index.isin(INCLUDE_LIST)
-                exclude_bool = mz_bool.index.isin(EXCLUDE_LIST)
-                mz_bool = mz_bool | include_bool
-                mz_bool = mz_bool & ~exclude_bool
-            index_lists.append(mz_bool[mz_bool])
-        mz_bool = pd.concat(index_lists, axis=1)
-        mz_list = mz_bool.index
-        new_mat_list = []
-        for mat in mat_list:
-            mat = mat.reindex(columns=mz_list, fill_value=None)
-            mat = mat[mz_list]
-            new_mat_list.append(mat)
-        return new_mat_list
-
 def filter_mat(mat_list: list[pd.DataFrame], threshold: float = 0.2, lock: bool = False, method: str = "all"):
     mz_counts = defaultdict(int)
     if method == "all":
@@ -105,13 +58,18 @@ def filter_mat(mat_list: list[pd.DataFrame], threshold: float = 0.2, lock: bool 
             yield mat.reindex(columns=mz_list, fill_value=0)
     elif method == "any":
         # Filter each matrix separately
+        all_mz = set()
         for mat in mat_list:
             for mz in mat.columns:
                 mz_counts[mz] = (mat[mz] > 0).sum()
             threshold_count = mat.shape[0] * threshold
             mz_list = [mz for mz, cnt in mz_counts.items() 
                        if  (not lock and cnt >= threshold_count) or (lock and mz in INCLUDE_LIST and mz not in EXCLUDE_LIST)]
-            yield mat.reindex(columns=mz_list, fill_value=0)
+            mat.reindex(columns=mz_list, fill_value=0)
+            all_mz.update(mz_list)
+        all_mz = sorted(all_mz)
+        for mat in mat_list:
+            yield mat.reindex(columns=all_mz)
     elif method == "none":
         for mat in mat_list:
             yield mat 

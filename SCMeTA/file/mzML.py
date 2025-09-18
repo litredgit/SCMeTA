@@ -3,9 +3,8 @@ import pandas as pd
 from SCMeTA.file.format import SCData
 from tqdm import tqdm
 import numpy as np
-from SCMeTA.config import PARAMETERS
 
-def _parse_mzml(file_path: str, scan_range: bool = PARAMETERS.scan_range) -> pd.DataFrame:
+def _parse_mzml(file_path: str, scan_range: set | None=None) -> pd.DataFrame:
     """
     优化版mzML解析器 (速度提升10-20倍)
     参数：
@@ -26,7 +25,7 @@ def _parse_mzml(file_path: str, scan_range: bool = PARAMETERS.scan_range) -> pd.
 
     # 使用迭代器+进度条
     for scan_num, spec in enumerate(tqdm(run, desc=f"Parsing {file_name}")):
-        if scan_range and not (PARAMETERS.scan_start <= scan_num <= PARAMETERS.scan_end):
+        if scan_range and not (scan_range[0] <= scan_num <= scan_range[1]):
             continue
 
         mz_array = np.around(spec.mz, decimals=3)
@@ -50,7 +49,7 @@ def load_mzML_data(name, path, target_attr) -> SCData:
     # load mzML file with Scan as index
     if not path.lower().endswith(".mzml"):
         raise ValueError("File is not a mzML file")
-    df = _parse_mzml(file_path=path, scan_range=PARAMETERS.scan_range)
+    df = _parse_mzml(file_path=path)
     attr = df[["Mass", "Intensity", "Scan"]].set_index("Scan")
     setattr(scdata, target_attr, attr)
     return scdata

@@ -1,7 +1,5 @@
 import numpy as np
 import pandas as pd
-
-from SCMeTA.config import INCLUDE_LIST, EXCLUDE_LIST
 from collections import defaultdict
 
 def sum_df(df: pd.DataFrame, scan: int) -> pd.DataFrame:
@@ -41,7 +39,8 @@ def filter_occ(
     process = process[process["Mass"].isin(peaks.index)]
     return process
 
-def filter_mat(mat_list: list[pd.DataFrame], threshold: float = 0.2, lock: bool = False, method: str = "all"):
+def filter_mat(mat_list: list[pd.DataFrame], threshold: float = 0.2, lock: bool = False, method: str = "all",
+               INCLUDE_LIST: list[float] = None, EXCLUDE_LIST: list[float] = None) -> list[pd.DataFrame]:
     mz_counts = defaultdict(int)
     if method == "all":
         # Filter all matrices together
@@ -75,8 +74,3 @@ def filter_mat(mat_list: list[pd.DataFrame], threshold: float = 0.2, lock: bool 
             yield mat 
     else:
         raise ValueError(f"Unknown method: {method}. Use 'all' or 'any'.")
-
-if __name__ == '__main__':
-    # func any threshold
-    # func all threshold
-    pass

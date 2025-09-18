@@ -1,9 +1,9 @@
 import sqlite3
 
-from SCMeTA.config import PARAMETERS
-
+# No db path in PARAMETERS --- IGNORE ---
 
 class Connector:
+    """
     def __init__(self):
         self.conn = sqlite3.connect(PARAMETERS.dbpath)
         self.cursor = self.conn.cursor()
@@ -25,5 +25,5 @@ class Connector:
 
     def search_list(self, mz_list: list[float], rl: float = 1.008, tol: float = 0.01) -> dict[float, list]:
         return {mz: self.search(mz, rl, tol) for mz in mz_list}
-
-
+    """
+    pass

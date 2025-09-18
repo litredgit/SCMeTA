@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+from functools import wraps
 from SCMeTA.method import (
     filter_occ,
     to_mat,
@@ -16,27 +17,42 @@ from SCMeTA.method import (
 from SCMeTA.batch import combat_batch_correction
 from SCMeTA.method.fill import fill_mat
 from SCMeTA.file import load_data, load_from_database
-from SCMeTA.config import PARAMETERS, setup_logger
+from SCMeTA.config import setup_config, setup_logger
 from SCMeTA.accelerate import MultiProcessing
-
 from SCMeTA.file.format import SCData
+
+def use_default_param(param_mapping):
+    """ A decorator to use instance variables as default values for function parameters."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            # Fill in missing parameters from instance attributes
+            for param, attr in param_mapping.items():
+                if param not in kwargs and param not in args:
+                    kwargs[param] = self.__getattribute__("PARAMETERS")[attr.split(".")[-1]]
+            return func(self, *args, **kwargs)
+        return wrapper
+    return decorator
 
 class Process:
     def __init__(
-        self, ref_mz: float = 760.58, mz1: float = 760.58, mz2: float = 791.34, mz3: float = 732.55
+        self, ref_mz: float = 760.58, config_path: str | None = None, renew: bool = False, 
+        mz1: float = 760.58, mz2: float = 791.34, mz3: float = 732.55
     ):
+        self.PARAMETERS, self.INCLUDE_LIST, self.EXCLUDE_LIST = setup_config(config_path=config_path, renew=renew)
         self.data: dict[str, SCData] = {}
 
         self.__mz1: float = mz1
         self.__mz2: float = mz2
         self.__mz3: float = mz3
         self.ref_mz: float = ref_mz
-        self.__dir = None
+        self.__dir: str | None=None
         self.__mp = MultiProcessing()
 
     def load(
         self,
         path: str,
+        log_file: str | None = None,
         data_type: str = "thermo",
         target_attr: str = "raw",
         method: str = "MultiThread"
@@ -53,11 +69,19 @@ class Process:
             target_attr: Attribute to load the data, default "raw", other attributes in SCData is also supported.
             method: Method to load the data, default "MultiThread", can be "one by one", "MultiProcess".
         """
-        self.logger = setup_logger(log_file=os.path.dirname(path) + "/process.log")
-        self.logger.info(f"Load files in path {[path]}.")
+        # set up logger
+        if log_file is None:
+            log_file=os.path.dirname(path) + "/process.log"
+        self.logger = setup_logger(log_file=log_file)
+        self.logger.info(f"save log in {log_file}.")
+        # check data_type
+        if data_type not in ["thermo", "process", "waters", "mzML", "database"]:
+            raise ValueError("Data type not supported.")
         if target_attr not in ["cell_mat", "mat", "process", "raw"]:
             target_attr = "raw"
             self.logger.warning(f"target_attr {target_attr} not supported and will be redirected to \"raw\", choose from (\"raw\", \"process\", \"mat\", \"cell_mat\")")
+        # load data
+        self.logger.info(f"Load files in path {[path]}.")
         self.data.update(load_data(path, data_type, target_attr, method))
         self.__dir = os.path.dirname(path)
         if not self.data:
@@ -130,11 +154,12 @@ class Process:
         else:
             raise ValueError("cut_method must be 'same' or 'separatedly'")
         self.logger.info("Cut range done.")
-        
+
+    @use_default_param({"count": "PARAMETERS.count", "resolution": "PARAMETERS.resolution"})
     def filter_occ(
         self,
-        count: int = PARAMETERS.count,
-        resolution: float = PARAMETERS.resolution,
+        count: int,
+        resolution: float,
         file_name: str | None = None,
     ):
         """
@@ -154,15 +179,17 @@ class Process:
                 self.data[file_name].raw.copy(), resolution, count
             )
 
-    def gen_mat(self, file_name: str | None = None):
+    @use_default_param({"min_intensity": "PARAMETERS.min_intensity"})
+    def gen_mat(self, min_intensity: float, file_name: str | None = None):
         self.logger.info("Convert data format to crosstab.")
         if file_name is None:
             for ms_data in self.data.values():
-                ms_data.mat = to_mat(data=ms_data.process, min_intensity=PARAMETERS.min_intensity)
+                ms_data.mat = to_mat(data=ms_data.process, min_intensity=min_intensity)
         else:
-            self.data[file_name].mat = to_mat(data=self.data[file_name].process, min_intensity=PARAMETERS.min_intensity)
-
-    def round_mat(self, resolution_intensity: float = PARAMETERS.resolution_intensity, file_name: str | None = None):
+            self.data[file_name].mat = to_mat(data=self.data[file_name].process, min_intensity=min_intensity)
+    
+    @use_default_param({"resolution_intensity": "PARAMETERS.resolution_intensity"})
+    def round_mat(self, resolution_intensity: float, file_name: str | None = None):
         self.logger.info(f"Round intensity to res_int: {resolution_intensity}.")
         if file_name is None:
             for ms_data in self.data.values():
@@ -172,7 +199,8 @@ class Process:
                 self.data[file_name].mat, resolution_intensity
             )
 
-    def denoise(self, max_ratio: float = PARAMETERS.maxratio, file_name: str | None = None):
+    @use_default_param({"max_ratio": "PARAMETERS.max_ratio"})
+    def denoise(self, max_ratio: float, file_name: str | None = None):
         """
         Find cell and subtract noise.
         Args:
@@ -194,7 +222,8 @@ class Process:
             ms_data.mat = noise_subtract(ms_data.mat, ms_data.cell_pos)
             self.data[file_name] = ms_data
 
-    def merge_cell(self, adjacent: int = PARAMETERS.adjacent, file_name: str | None = None):
+    @use_default_param({"adjacent": "PARAMETERS.adjacent"})
+    def merge_cell(self, adjacent: int, file_name: str | None = None):
         """
         Combine the adjacent cells
         Args:
@@ -215,7 +244,8 @@ class Process:
                 adjacent=adjacent,
             )
 
-    def filter_assem(self, snr: float = PARAMETERS.snr, file_name: str | None = None):
+    @use_default_param({"snr": "PARAMETERS.snr"})
+    def filter_assem(self, snr: float, file_name: str | None = None):
         """
         Filter out the data with Intensity/Noise < snr
         Args:
@@ -245,11 +275,12 @@ class Process:
                 self.data[file_name].cell_mat, self.data[file_name].cell_pos
             )
 
+    @use_default_param({"threshold": "PARAMETERS.threshold", "lock_mz": "PARAMETERS.lock_mz"})
     def filter_mat(
         self,
-        threshold: float = PARAMETERS.threshold,
+        threshold: float,
+        lock_mz: bool,
         name_list: list[str] | None = None,
-        lock_mz: bool = PARAMETERS.lock,
         method: str = "all"
     ):
         """
@@ -260,11 +291,16 @@ class Process:
             lock_mz: If True, the mz you select in lock mz file will be locked, default False.
             method: Method to filter the data, default "all", can be "all", "any", "none".
         """
-        self.logger.info(f"Filter mz occurred > threshold: {threshold} * cell_count.")
+        self.logger.info(f"Filter mz occurred > threshold: {threshold} * cell_count with lock_mz {lock_mz}.")
+        if lock_mz and (self.INCLUDE_LIST is None or self.EXCLUDE_LIST is None):
+            raise ValueError("INCLUDE_LIST or EXCLUDE_LIST is None, cannot lock m/z.")
         if name_list is None:
             name_list = list(self.data.keys())
         mat_list = [self.data[name].cell_mat for name in name_list]
-        total_mat = list(filter_mat(mat_list, threshold, lock_mz, method))
+        total_mat = list(filter_mat(
+            mat_list=mat_list, threshold=threshold, lock=lock_mz, method=method,
+            INCLUDE_LIST=self.INCLUDE_LIST, EXCLUDE_LIST=self.EXCLUDE_LIST
+        ))
         for index, name in enumerate(name_list):
             self.data[name].cell_mat = total_mat[index]
 
@@ -433,13 +469,14 @@ class Process:
                 os.path.join(dir_path, f"{file_name}_{data_type}.csv")
             )
 
+    @use_default_param({"resolution": "PARAMETERS.resolution", "count": "PARAMETERS.count"})
     def pre_process(
         self,
+        resolution: float,
+        count: int,
         file_name: str | list[str] | None = None,
         offset: float | None = None,
         cut_range: tuple[int, int] | None = None,
-        resolution: float = PARAMETERS.resolution,
-        count: int = PARAMETERS.count,
         offset_method: str = "same",
         cut_method: str = "same",
         clear_mem: bool = False
@@ -489,23 +526,32 @@ class Process:
         if clear_mem:
             self.clear_memory(attributes=["raw"])
 
+    @use_default_param({"min_intensity": "PARAMETERS.min_intensity",
+                        "resolution_intensity": "PARAMETERS.resolution_intensity",
+                        "max_ratio": "PARAMETERS.max_ratio",
+                        "adjacent": "PARAMETERS.adjacent",
+                        "snr": "PARAMETERS.snr",
+                        "threshold": "PARAMETERS.threshold",
+                        "lock_mz": "PARAMETERS.lock"})
     def process(
             self,
-            max_ratio: float = PARAMETERS.maxratio,
-            adjacent: int = PARAMETERS.adjacent,
-            snr: float = PARAMETERS.snr,
-            resolution_intensity: float = PARAMETERS.resolution_intensity,
-            threshold: float = PARAMETERS.threshold,
-            lock_mz: bool = PARAMETERS.lock,
+            min_intensity: float,
+            resolution_intensity: float,
+            max_ratio: float,
+            adjacent: int,
+            snr: float,
+            threshold: float,
+            lock_mz: bool,
             filter_method: str = "all",
             clear_mem: bool = False
     ):
         """
         Args:
+            min_intensity: Minimum intensity for generating the matrix
+            resolution_intensity: Resolution of the mass intensity
             max_ratio: If ref_mz_intensity > max_ratio * ref_mz_max_intensity, the cell will be extracted
             adjacent: The number of adjacent cells to be combined
             snr: Signal to noise ratio
-            resolution_intensity: Resolution of the mass intensity
             threshold: Threshold of the data
             lock_mz: If True, the mz you select in lock mz file will be locked
             filter_method: Method of filtering
@@ -515,7 +561,7 @@ class Process:
             raise ValueError("No data loaded")
         self.logger.info("Process begin.")
         if not clear_mem:
-            self.gen_mat()
+            self.gen_mat(min_intensity=min_intensity)
             self.round_mat(resolution_intensity=resolution_intensity)
             self.denoise(max_ratio=max_ratio)
             self.merge_cell(adjacent=adjacent)
@@ -524,7 +570,7 @@ class Process:
             self.info()
             self.clear_memory()
         else:
-            self.gen_mat()
+            self.gen_mat(min_intensity=min_intensity)
             self.clear_memory(attributes=["process"])
             self.round_mat(resolution_intensity=resolution_intensity)
             self.denoise(max_ratio=max_ratio)

@@ -3,21 +3,12 @@ from pathlib import Path
 
 import platform
 
-from SCMeTA.config.default import DEFAULT_CONFIG
-
-CONFIG_DIR = Path("~/.scmeta").expanduser()
-CONFIG_PATH = CONFIG_DIR / "config.ini"
 SYSTEM = platform.system()
 
-def get_config():
+def get_config(CONFIG_PATH: Path = None):
     parser = ConfigParser()
-    if not CONFIG_PATH.exists():
-        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        with open(CONFIG_PATH, "w") as f:
-            f.write(DEFAULT_CONFIG)
     parser.read(CONFIG_PATH)
     return parser
-
 
 class Parameters:
     def __init__(self, parameters):
@@ -42,10 +33,3 @@ class Parameters:
 
     def __getitem__(self, item):
         return self.__getattr__(item)
-
-
-config = get_config()
-
-
-PARAMETERS = Parameters(config["PARAMETERS"])
-METABOLITE = Parameters(config["METABOLITE"])

@@ -1,7 +1,8 @@
 import pandas as pd
+from scipy.signal import find_peaks
 
 from .format import SCData
-from .plugin import RawFileReader
+from . import RawFileReader
 
 
 def load_txt(path):
@@ -17,12 +18,13 @@ def load_thermo(path):
     return raw
 
 
-def load_thermo_data(name, path, target_attr) -> SCData:
-    data = SCData(name)
-    if path.lower().endswith(".raw"):
-        setattr(data, target_attr, load_thermo(path))
-    elif path.lower().endswith(".txt"):
-        setattr(data, target_attr, load_txt(path))
-    else:
-        raise FileNotFoundError("File not supported")
+def load_thermo(path, include_ms2=False, filter_resolution: bool = True) -> pd.DataFrame:
+    reader = RawFileReader(file_path=path)
+    data = reader.to_dataframe(include_ms2=include_ms2, filter_threshold=10)
+    if filter_resolution:
+        peaks, _ = find_peaks(data["Intensity"], distance=16)
+        data = data.iloc[peaks]
+    data.set_index("Scan", inplace=True)
+    data = data.drop(columns=["RetentionTime"])
+
     return data

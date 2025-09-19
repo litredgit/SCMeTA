@@ -12,7 +12,8 @@ from SCMeTA.method import (
     filter_mat,
     normalize,
     round_columns,
-    convert_format
+    convert_format,
+    combine_peaks,
 )
 from SCMeTA.batch import combat_batch_correction
 from SCMeTA.method.fill import fill_mat
@@ -197,6 +198,25 @@ class Process:
             self.data[file_name].mat = round_columns(
                 self.data[file_name].mat, resolution_intensity
             )
+    @use_default_param({"mz_interval": "PARAMETERS.mz_interval"})
+    def combine_peaks(self, mz_interval: float, file_name: str | None = None):
+        """
+        Combine the columns which the difference is less than mz_interval
+        Args:
+            mz_interval: Minimum difference of m/z to be combined, default 0.01
+            file_name: File name, if None, all files will be processed.
+        """
+        if mz_interval > 0:
+            self.logger.info(f"Combine peaks with mz interval < {mz_interval}.")
+            if file_name is None:
+                for ms_data in self.data.values():
+                    ms_data.mat = combine_peaks(ms_data.mat, mz_interval=mz_interval)
+            else:
+                self.data[file_name].mat = combine_peaks(
+                    self.data[file_name].mat, mz_interval=mz_interval
+                )
+        else:
+            self.logger.info(f"mz_interval <= 0, skip combine peaks step.")
 
     @use_default_param({"max_ratio": "PARAMETERS.max_ratio"})
     def denoise(self, max_ratio: float, file_name: str | None = None):
@@ -468,11 +488,16 @@ class Process:
                 os.path.join(dir_path, f"{file_name}_{data_type}.csv")
             )
 
-    @use_default_param({"resolution": "PARAMETERS.resolution", "count": "PARAMETERS.count"})
+    @use_default_param({
+        "resolution": "PARAMETERS.resolution",
+        "count": "PARAMETERS.count",
+        "mz_interval": "PARAMETERS.mz_interval"
+    })
     def pre_process(
         self,
         resolution: float,
         count: int,
+        mz_interval: float,
         file_name: str | list[str] | None = None,
         offset: float | None = None,
         cut_range: tuple[int, int] | None = None,
@@ -488,6 +513,7 @@ class Process:
             cut_range: Cut range of the data, if None, it will ignore the cut step.
             resolution: Resolution of the data, default 0.01.
             count: Minimum occurrence of the data, default 10.
+            mz_interval: Minimum difference of m/z to be combined, default 0.01
             offset_method: Method to set offset, default "same", can be "separatedly".
             cut_method: Method to cut the data, default "same", can be "separatedly".
             clear_mem: If True, clear the SCData.raw after pre_process, default False.
@@ -522,6 +548,7 @@ class Process:
                 self.cut_preprocess(file_list, cut_range, cut_method)
 
         self.filter_occ(resolution=resolution, count=count)
+        self.combine_peaks(mz_interval=mz_interval)
         if clear_mem:
             self.clear_memory(attributes=["raw"])
 
@@ -531,7 +558,7 @@ class Process:
                         "adjacent": "PARAMETERS.adjacent",
                         "snr": "PARAMETERS.snr",
                         "threshold": "PARAMETERS.threshold",
-                        "lock_mz": "PARAMETERS.lock"})
+                        "lock_mz": "PARAMETERS.lock_mz"})
     def process(
             self,
             min_intensity: float,

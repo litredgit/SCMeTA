@@ -70,10 +70,9 @@ class Process:
             method: Method to load the data, default "MultiThread", can be "one by one", "MultiProcess".
         """
         # set up logger
-        if log_file is None:
-            log_file=os.path.dirname(path) + "/process.log"
+        if log_file == 'data':
+            log_file=os.path.dirname(path) + "/scmeta.log"
         self.logger = setup_logger(log_file=log_file)
-        self.logger.info(f"save log in {log_file}.")
         # check data_type
         if data_type not in ["thermo", "process", "waters", "mzML", "database"]:
             raise ValueError("Data type not supported.")

@@ -3,7 +3,7 @@ DEFAULT_CONFIG = """
 [PARAMETERS]
 Resolution = 0.01
 Count = 10
-Mz_interval = 0.01
+Mz_interval = 0
 
 Min_intensity = 0
 Resolution_intensity = 0.01

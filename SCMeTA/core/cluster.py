@@ -66,7 +66,6 @@ class Process:
             data_type: Data type, support:
                 "thermo": [".raw", ".txt"],
                 "process": [".csv"],
-                "waters": [".wiff", ".txt"],
                 "mzML": [".mzML", ".mzml"].
             target_attr: Attribute to load the data, default "raw", other attributes in SCData is also supported.
             method: Method to load the data, default "MultiThread", can be "one by one", "MultiProcess".
@@ -473,14 +472,12 @@ class Process:
 
     @use_default_param({
         "resolution": "PARAMETERS.resolution",
-        "count": "PARAMETERS.count",
-        "mz_interval": "PARAMETERS.mz_interval"
+        "count": "PARAMETERS.count"
     })
     def pre_process(
         self,
         resolution: float,
         count: int,
-        mz_interval: float,
         file_name: str | list[str] | None = None,
         offset: float | None = None,
         cut_range: tuple[int, int] | None = None,
@@ -502,12 +499,12 @@ class Process:
         self.logger.info("Pre-process begin.")
         self.cut_offset(file_name=file_name, cut_range=cut_range, offset=offset)
         self.filter_occ(resolution=resolution, count=count)
-        self.combine_peaks(mz_interval=mz_interval)
         if clear_mem:
             self.clear_memory(attributes=["raw"])
 
     @use_default_param({"min_intensity": "PARAMETERS.min_intensity",
                         "resolution_intensity": "PARAMETERS.resolution_intensity",
+                        "mz_interval": "PARAMETERS.mz_interval",
                         "max_ratio": "PARAMETERS.max_ratio",
                         "adjacent": "PARAMETERS.adjacent",
                         "snr": "PARAMETERS.snr",
@@ -517,6 +514,7 @@ class Process:
             self,
             min_intensity: float,
             resolution_intensity: float,
+            mz_interval: float,
             max_ratio: float,
             adjacent: int,
             snr: float,
@@ -542,6 +540,7 @@ class Process:
         if clear_mem:
             self.clear_memory(attributes=["process"])
         self.round_mat(resolution_intensity=resolution_intensity)
+        self.combine_peaks(mz_interval=mz_interval)
         self.denoise(max_ratio=max_ratio)
         self.merge_cell(adjacent=adjacent)
         self.filter_assem(snr=snr)

@@ -17,7 +17,7 @@ def load_thermo(path):
     return raw
 
 
-def load_thermo_data(name, path, target_attr) -> SCData:
+def load_thermo_data(name, path, target_attr, load_range) -> SCData:
     data = SCData(name)
     if path.lower().endswith(".raw"):
         setattr(data, target_attr, load_thermo(path))

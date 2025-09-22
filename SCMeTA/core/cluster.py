@@ -56,6 +56,7 @@ class Process:
         log_file: str | None = None,
         data_type: str = "thermo",
         target_attr: str = "raw",
+        load_range: tuple[int, int] | None = None,
         method: str = "MultiThread"
     ):
         """
@@ -82,7 +83,7 @@ class Process:
             self.logger.warning(f"target_attr {target_attr} not supported and will be redirected to \"raw\", choose from (\"raw\", \"process\", \"mat\", \"cell_mat\")")
         # load data
         self.logger.info(f"Load files in path {[path]}.")
-        self.data.update(load_data(path, data_type, target_attr, method))
+        self.data.update(load_data(path, data_type, target_attr, load_range, method))
         self.__dir = os.path.dirname(path)
         if not self.data:
             raise ValueError("No data loaded")
@@ -100,60 +101,42 @@ class Process:
         for key, value in data.items():
             self.data.update(load_data(value, key, "database"))
 
-    def offset_preprocess(
-        self,
-        file_list: list | None = None,
-        offset: float | None = None,
-        offset_method: str = "same",
-    ):
+    def cut_offset(self,
+                   file_name: str | list[str]| None = None,
+                   offset: float | None = None,
+                   cut_range: tuple[int, int] | None = None
+                   ):
         """
-        offset the data
+        Cut and offset the data
         Args:
-            file_list: File name list.
+            file_name: File name list, if None, all files will be processed.
             offset: Offset of the data, if None, it will ignore the offset step.
-            offset_method: Method to set offset, default "same", can be "separatedly".
-        """
-        if offset_method == "same":
-            for file in file_list:
-                self.data[file].set_offset(offset=offset)
-            print(f"Set Offset {offset} all the same.")
-        elif offset_method == "separatedly":
-            for file in file_list:
-                offset = float(input(f"Please input the offset of {file}: "))
-                self.data[file].set_offset(offset=offset)
-                print(f"Set Offset {offset} in {file}.")
-        else:
-            raise ValueError("offset_method must be 'same' or 'separatedly'")
-        self.logger.info(f"Set Offset done.")
-            
-    def cut_preprocess(
-        self,
-        file_list: list | None = None,
-        cut_range: tuple[int, int] | None = None,
-        cut_method: str = "same",
-    ):
-        """
-        Cut the data
-        Args:
-            file_list: File name list.
             cut_range: Cut range of the data, if None, it will ignore the cut step.
-            cut_method: Method to cut the data, default "same", can be "separatedly".
         """
-        if cut_method == "same":
-            for file in file_list:
-                self.data[file].cut(start=cut_range[0], end=cut_range[1])
-                print(f"Cut range {cut_range[0]} to {cut_range[1]} all the same.")
-        elif cut_method == "separatedly":
-            for file in file_list:
-                cut_range = (
-                    int(input(f"Please input the start of cut range of {file}: ")),
-                    int(input(f"Please input the end of cut range of {file}: ")),
-                )
-                self.data[file].cut(start=cut_range[0], end=cut_range[1])
-                print(f"Cut range {cut_range[0]} to {cut_range[1]} in {file}.")
+        if offset is None and cut_range is None:
+            self.logger.info("No offset or cut range.")
         else:
-            raise ValueError("cut_method must be 'same' or 'separatedly'")
-        self.logger.info("Cut range done.")
+            if isinstance(file_name, str):
+                file_list = [file_name]
+            elif isinstance(file_name, list):
+                file_list = file_name
+            elif file_name is None:
+                file_list = list(self.data.keys())
+            else:
+                raise ValueError("File name not str or list.")
+            # Check if the file is in the data dictionary
+            for file in file_list:
+                if file not in list(self.data.keys()):
+                    raise ValueError(f"{file} not in data")
+            # do offset and cut
+            if offset is not None:
+                for file in file_list:
+                    self.data[file].set_offset(offset=offset)
+                self.logger.info(f"Offset {offset} for {file_list}.")
+            if cut_range is not None:
+                for file in file_list:
+                    self.data[file].cut(start=cut_range[0], end=cut_range[1])
+                self.logger.info(f"Cut range {cut_range} for {file_list}.")
 
     @use_default_param({"count": "PARAMETERS.count", "resolution": "PARAMETERS.resolution"})
     def filter_occ(
@@ -501,52 +484,23 @@ class Process:
         file_name: str | list[str] | None = None,
         offset: float | None = None,
         cut_range: tuple[int, int] | None = None,
-        offset_method: str = "same",
-        cut_method: str = "same",
         clear_mem: bool = False
         ):
         """
         Pre-process the data, including peak_combine, offset, cut, and round.
         Args:
+            count: Minimum occurrence of the data, default 10.
+            resolution: Resolution of the data, default 0.01.
+            mz_interval: Minimum difference of m/z to be combined, default 0.01
             file_name: File name
             offset: Offset of the data, if None, it will ignore the offset step.
             cut_range: Cut range of the data, if None, it will ignore the cut step.
-            resolution: Resolution of the data, default 0.01.
-            count: Minimum occurrence of the data, default 10.
-            mz_interval: Minimum difference of m/z to be combined, default 0.01
-            offset_method: Method to set offset, default "same", can be "separatedly".
-            cut_method: Method to cut the data, default "same", can be "separatedly".
             clear_mem: If True, clear the SCData.raw after pre_process, default False.
         Returns:
 
         """
         self.logger.info("Pre-process begin.")
-
-        if offset is None and cut_range is None:
-            self.logger.info("No offset or cut range.")
-        else:
-            # convert file_name or self.data.keys() to list
-            if isinstance(file_name, str):
-                file_list = [file_name]
-            elif isinstance(file_name, list):
-                file_list = file_name
-            elif file_name is None:
-                file_list = list(self.data.keys())
-            else:
-                raise ValueError("File name not str or list.")
-            
-            # Check if the file is in the data dictionary
-            for file in file_list:
-                if file not in list(self.data.keys()):
-                    raise ValueError(f"{file} not in data")
-                
-            self.logger.info(f"For files in {file_list}.")
-            # do offset and cut
-            if offset is not None: 
-                self.offset_preprocess(file_list, offset, offset_method)
-            if cut_range is not None:
-                self.cut_preprocess(file_list, cut_range, cut_method)
-
+        self.cut_offset(file_name=file_name, cut_range=cut_range, offset=offset)
         self.filter_occ(resolution=resolution, count=count)
         self.combine_peaks(mz_interval=mz_interval)
         if clear_mem:
@@ -583,28 +537,17 @@ class Process:
             filter_method: Method of filtering
             clear_mem: If True, clear the SCData.process and SCData.mat after process, default False(clear mat).
         """
-        if not self.data:
-            raise ValueError("No data loaded")
         self.logger.info("Process begin.")
-        if not clear_mem:
-            self.gen_mat(min_intensity=min_intensity)
-            self.round_mat(resolution_intensity=resolution_intensity)
-            self.denoise(max_ratio=max_ratio)
-            self.merge_cell(adjacent=adjacent)
-            self.filter_assem(snr=snr)
-            self.filter_mat(threshold=threshold, lock_mz=lock_mz, method=filter_method)
-            self.info()
-            self.clear_memory()
-        else:
-            self.gen_mat(min_intensity=min_intensity)
+        self.gen_mat(min_intensity=min_intensity)
+        if clear_mem:
             self.clear_memory(attributes=["process"])
-            self.round_mat(resolution_intensity=resolution_intensity)
-            self.denoise(max_ratio=max_ratio)
-            self.merge_cell(adjacent=adjacent)
-            self.filter_assem(snr=snr)
-            self.clear_memory(attributes=["mat"])
-            self.filter_mat(threshold=threshold, lock_mz=lock_mz, method=filter_method)
-            self.info()
+        self.round_mat(resolution_intensity=resolution_intensity)
+        self.denoise(max_ratio=max_ratio)
+        self.merge_cell(adjacent=adjacent)
+        self.filter_assem(snr=snr)
+        self.clear_memory(attributes=["mat"])
+        self.filter_mat(threshold=threshold, lock_mz=lock_mz, method=filter_method)
+        self.info()
 
     def post_process(
             self,
@@ -630,4 +573,56 @@ class Process:
         self.normalize(data=data, normalize_method=normalize_method)
         self.fill(data=data, fillna_method=fillna_method)
         # self.combat()
-        return data
+
+    @use_default_param({
+        "resolution": "PARAMETERS.resolution",
+        "count": "PARAMETERS.count",
+        "mz_interval": "PARAMETERS.mz_interval",
+        "min_intensity": "PARAMETERS.min_intensity",
+        "resolution_intensity": "PARAMETERS.resolution_intensity",
+        "max_ratio": "PARAMETERS.max_ratio",
+        "adjacent": "PARAMETERS.adjacent",
+        "snr": "PARAMETERS.snr",
+        "threshold": "PARAMETERS.threshold",
+        "lock_mz": "PARAMETERS.lock_mz",
+        "normalize_method": "PARAMETERS.normalize_method",
+        "fillna_method": "PARAMETERS.fillna_method"
+    })
+    def run(
+            self,
+            resolution: float,
+            count: int,
+            mz_interval: float,
+            min_intensity: float,
+            resolution_intensity: float,
+            max_ratio: float,
+            adjacent: int,
+            snr: float,
+            threshold: float,
+            lock_mz: bool,
+            normalize_method: list[str],
+            fillna_method: str,
+            tags: list[str] = None
+    ):
+        """ Run the whole process."""
+        self.pre_process(
+            resolution=resolution,
+            count=count,
+            mz_interval=mz_interval,
+            clear_mem=True
+        )
+        self.process(
+            min_intensity=min_intensity,
+            resolution_intensity=resolution_intensity,
+            max_ratio=max_ratio,
+            adjacent=adjacent,
+            snr=snr,
+            threshold=threshold,
+            lock_mz=lock_mz,
+            clear_mem=True
+        )
+        self.post_process(
+            normalize_method=normalize_method,
+            fillna_method=fillna_method,
+            tags=tags
+        )

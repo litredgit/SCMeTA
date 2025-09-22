@@ -13,8 +13,9 @@ class MultiProcessing:
         sub_dict, func, args, kwargs = args
         result = []
         target_attr = sub_dict.pop("target_attr", "raw")
+        load_range = sub_dict.pop("load_range", None)
         for key in sub_dict:
-            processed = {key: func(key, sub_dict[key], target_attr, *args, **kwargs)}
+            processed = {key: func(key, sub_dict[key], target_attr, load_range, *args, **kwargs)}
             result.append(processed)
         return result
 

@@ -53,7 +53,7 @@ class Process:
     def load(
         self,
         path: str,
-        log_file: str | None = None,
+        log_file: str = '',
         data_type: str = "thermo",
         target_attr: str = "raw",
         load_range: tuple[int, int] | None = None,

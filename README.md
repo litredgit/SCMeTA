@@ -32,6 +32,15 @@ sc.post_process()
 
 ```
 
+### Web
+
+```bash
+cp web.py.example web.py
+python web.py
+```
+
+explore client_ip:5000 to process on web
+
 ## Documentation
 
 The official documentation is hosted on Read the Docs: https://sc-meta.com/

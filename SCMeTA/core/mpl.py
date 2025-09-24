@@ -2,20 +2,23 @@ import os
 
 import matplotlib.pyplot as plt
 import pandas as pd
-from matplotlib.figure import Figure, Axes
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 
 from SCMeTA.plot.Mpl import scatter, heatmap, line, radar, volcano, bar, box
 from SCMeTA.method import round_rows, round_columns, k_w_test
-from SCMeTA.method.machine_learning import discriminate, to_mat
+from SCMeTA.method.machine_learning import discriminate, to_mat, kmeans
 from SCMeTA.file import SCData
 from SCMeTA.config import setup_logger
+
+plt.rcParams["font.family"] = "Arial"
+plt.rcParams["figure.dpi"] = 300
 
 FIGURE_SIZE = {
     "heatmap": (7, 5),
     "scatter": (5, 5),
     "line": (10, 5),
 }
-
 
 class MplPlot:
     def __init__(self, path: str |None = None):
@@ -25,6 +28,7 @@ class MplPlot:
         self.path = path
     def __read_csv(self, path: str):
         mat = pd.read_csv(path, index_col=0)
+        mat.columns = mat.columns.astype(float)
         name = os.path.basename(path).split(".")[0]
         self.__mat[name] = mat
 
@@ -178,6 +182,12 @@ class MplPlot:
         if save is True:
             self.save_plot(save_path=save_path, dpi=dpi, name="box")
         return dict_data
+    
+    def k_means(self, n_clusters: int = 2):
+        full = kmeans(mat, n_clusters=n_clusters)
+        fig, ax = self.init_plot(1, 1, "scatter")
+        scatter(data=full, cell_range=self.__cell_range, ax=ax, title="K-Means")
+        return to_mat(full, self.__cell_range)
 
     # def radar(self, ax=None, mz_list: pd.DataFrame | None = None):
     #     if ax is None:
@@ -189,7 +199,7 @@ class MplPlot:
     def ms_compare(self, name: str):
         fig, ax = self.init_plot(2, 1, "line")
         ms_data = self.__data[name]
-        scan_list = ms_data.cell_pos.to_list()
+        scan_list = ms_data.cell_pos
         scan = int(input(f"Please Select a scan from:\n {scan_list}"))
         if scan not in scan_list:
             self.logger.warning(f"Scan {scan} is not in the scan list")

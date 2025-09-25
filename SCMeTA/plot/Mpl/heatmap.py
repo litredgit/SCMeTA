@@ -3,7 +3,8 @@ import pandas as pd
 
 from matplotlib.cm import ScalarMappable
 import matplotlib.pyplot as plt
-from matplotlib.figure import Figure, Axes
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 import matplotlib.ticker as ticker
 
 from SCMeTA.method import combine_mat
@@ -35,12 +36,13 @@ def heatmap(
     func: str = "LOG2",
     title: str = "Heatmap",
 ):
-    mat = combine_mat(mat_list.values()).fillna(0.00001)
+    mat = combine_mat(mat_list.values()).fillna(0.000001)
     if (func == "NO_LOG"):
         mat = mat
     else:
         mat = mat.apply(LOG_KEY[func])
     mat = mat.T
+    fig.subplots_adjust(left=0.15, right=1, top=0.9, bottom=0.1)
     im = ax.imshow(
         mat, cmap=CMAP_KEY[color_map], aspect="auto"
     )  # save AxesImages from imshow
@@ -59,6 +61,10 @@ def heatmap(
     for b in range(len(cell_numb)):
         new_cell_numb[b] = new_cell_numb[b] + int(cell_numb[b] / 2)
 
+    # draw lines between each group of cells
+    for i in range(len(new_cell_numb) - 1):
+        ax.axvline(x=new_cell_numb[i] + 0.5, color='black', linestyle='--', linewidth=0.5)
+    
     ax.set_xlabel("Cell")
     ax.set_ylabel("Mass")
     ax.set_title(title)
@@ -67,6 +73,6 @@ def heatmap(
     ax.xaxis.set_major_locator(ticker.FixedLocator(new_cell_numb))  # set x location
     ax.xaxis.set_major_formatter(ticker.FixedFormatter(cell_name))  # set x name
     ax.set_yticks(np.arange(len(mass)), labels=mass)  # set y location and name
-    ax.yaxis.set_major_locator(ticker.MultipleLocator(5))  # show y label for every 5 y label
+    ax.yaxis.set_major_locator(ticker.MaxNLocator(20))  # show total 20 y-axis ticks
 
     ax.set_xticklabels(cell_name, rotation=45, ha='right') # rotate x label

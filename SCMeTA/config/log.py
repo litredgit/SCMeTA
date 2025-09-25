@@ -2,7 +2,7 @@ import logging
 import os
 from pathlib import Path
 
-def setup_logger(name = __name__, log_file : str | None = None, level=logging.INFO):
+def setup_logger(name = __name__, log_file : str = '', level=logging.INFO):
     """
     Set up a logger that outputs to both console and file
     
@@ -17,7 +17,7 @@ def setup_logger(name = __name__, log_file : str | None = None, level=logging.IN
         logging.Logger: Configured logger instance
     """
     # Create log directory if it doesn't exist\
-    if log_file is not None:
+    if log_file != '':
         if log_file == 'home':
             log_file = str(Path.home() / ".scmeta" / "scmeta.log")
         elif log_file == 'cwd':
@@ -31,7 +31,7 @@ def setup_logger(name = __name__, log_file : str | None = None, level=logging.IN
         if log_dir and not os.path.exists(log_dir):
             os.makedirs(log_dir, exist_ok=True)
     else:
-        log_file = None  # No file logging if log_file is None
+        pass  # No file logging if log_file is None
 
     # Create logger with specified name
     logger = logging.getLogger(name)
@@ -48,7 +48,7 @@ def setup_logger(name = __name__, log_file : str | None = None, level=logging.IN
 )
     formatter.converter = lambda *args: __import__('time').localtime(*args)
     # File handler (without rotation)
-    if log_file is not None:
+    if log_file != '':
         file_handler = logging.FileHandler(log_file, encoding='utf-8')
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)

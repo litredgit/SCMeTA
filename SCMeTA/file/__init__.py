@@ -8,18 +8,7 @@ from .process import load_process_data
 from .mzML import load_mzML_data
 from .format import *
 from .database import load_from_database
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:  # True when type checking, False when running
-    from .mzML import load_mzml, load_data
-else:
-    # do when running
-    def __getattr__(name):
-        if name in ("load_mzml", "load_data"):
-            from .mzML import load_mzml, load_data
-            return locals()[name]
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+from SCMeTA.tool import check_path
 
 FUNC_DICT = {
     "thermo": load_thermo_data,
@@ -32,16 +21,6 @@ SUFFIX_DICT = {
     "process": [".csv"],
     "mzML": [".mzML", ".mzml"]
 }
-
-
-def is_type(path: str, data_type: str) -> bool:
-    suffix = os.path.splitext(path)[1]
-    return suffix.lower() in SUFFIX_DICT[data_type]
-
-
-def get_name_from_path(path: str) -> str:
-    return os.path.splitext(os.path.basename(path))[0]
-
 
 def path_from_database(path: str) -> str:
     base_path = ".Database/cyesi"
@@ -67,27 +46,19 @@ def read_files_in_parallel(names: list[str], paths: list[str], data_type: str = 
 def load_data(
     path: str | dict, data_type: str = "thermo", target_attr: str = "raw", load_range: tuple[int, int] | None = None, method: str = "MultiThread"
 ) -> dict[str, SCData]:
-    if isinstance(path, str):
-        if os.path.isdir(path):
-            files_with_suffix = [file for file in os.listdir(path) if is_type(file, data_type)]
-            paths = [os.path.join(path, file) for file in files_with_suffix]
-            names = [get_name_from_path(file) for file in files_with_suffix]
-            if method == "one by one":
-                return {name:FUNC_DICT[data_type](name, path, target_attr, load_range) for name, path in zip(names, paths)} 
-            else:
-                return read_files_in_parallel(names, paths, data_type, target_attr, load_range, method)
-        elif os.path.isfile(path):
-            if not is_type(path, data_type):
-                raise ValueError(f"File {path} is not a {data_type} file")
-            name = get_name_from_path(path)
-            return {name: FUNC_DICT[data_type](name, path, target_attr, load_range)}
-        else:
-            raise ValueError("Please provide a valid path")
-    elif isinstance(path, dict):
-        paths = [path_from_database(path) for path in path.values()]
-        results = read_files_in_parallel(path.keys(), paths, data_type, target_attr, load_range, method)
-        return results
+    """
+    Load data from the given path or database.
+    """
+    files = check_path(path, do='r', type=[ext.lstrip('.') for ext in SUFFIX_DICT[data_type]])
+    
+    if method == "one by one":
+        return {name: FUNC_DICT[data_type](name, file_path, target_attr, load_range) for name, file_path in files.items()}
     else:
-        raise ValueError(f"path{path} not str or dict")
+        return read_files_in_parallel(list(files.keys()), list(files.values()), data_type, target_attr, load_range, method)
+
+    # elif isinstance(path, dict):
+    #     paths = [path_from_database(path) for path in path.values()]
+    #     results = read_files_in_parallel(path.keys(), paths, data_type, target_attr, load_range, method)
+    #     return results
 
 

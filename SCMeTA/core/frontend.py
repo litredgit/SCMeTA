@@ -17,9 +17,6 @@ class StreamRedirector:
     def flush(self):
         pass
 
-sys.stdout = StreamRedirector('stdout')
-sys.stderr = StreamRedirector('stderr')
-
 @app.route('/')
 def index():
     return send_file('frontend.html')
@@ -55,5 +52,7 @@ def ws_save(args):
     proc.save(**args)
     emit('step_done', {'step': 'save'})
 
-if __name__ == '__main__':
-    socketio.run(app, debug=True)
+def web(app, host="0.0.0.0", port=5000, debug=True):
+    sys.stdout = StreamRedirector('stdout')
+    sys.stderr = StreamRedirector('stderr')
+    socketio.run(app=app, host=host, port=port, debug=debug)

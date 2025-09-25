@@ -1,6 +1,6 @@
 from .core import Process as Process
 from .core import MplPlot as Plot
-from .core import socketio, app
+from .core import web, app
 
 __all__ = [
     "Process",

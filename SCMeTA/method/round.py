@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 
-def round_columns(mat: pd.DataFrame, resolution_intensity: float = 0.01, axis=1) -> pd.DataFrame:
+def round_columns(mat: pd.DataFrame, res_intens: float = 0.01, axis=1) -> pd.DataFrame:
     """Round the values of a column to n decimal places.
 
     Args:
@@ -12,7 +12,7 @@ def round_columns(mat: pd.DataFrame, resolution_intensity: float = 0.01, axis=1)
     Returns:
         pd.DataFrame: The rounded matrix.
     """
-    n = int(np.log10(1 / resolution_intensity))
+    n = int(np.log10(1 / res_intens))
     if axis == 1:
         c = mat.columns.to_numpy(dtype=float)
         c = np.round(c, n)

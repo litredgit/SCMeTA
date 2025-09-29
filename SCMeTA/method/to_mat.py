@@ -1,10 +1,10 @@
 import pandas as pd
 import numpy as np
 
-def to_mat(data: pd.DataFrame, min_intensity: float = 0.001) -> pd.DataFrame:
+def to_mat(data: pd.DataFrame, min_intens: float = 0.001) -> pd.DataFrame:
 
     # filter out low intensity values
-    data = data[data['Intensity'] > min_intensity].copy()
+    data = data[data['Intensity'] > min_intens].copy()
 
     # convert data format
     mat = pd.crosstab( 

@@ -8,11 +8,11 @@ def sum_df(df: pd.DataFrame, scan: int) -> pd.DataFrame:
     df = df.set_index("Scan")
     return df
 
-def peaks_combine(_raw: pd.DataFrame, resolution: float = 0.01) -> pd.DataFrame:
+def peaks_combine(_raw: pd.DataFrame, res_mz: float = 0.01) -> pd.DataFrame:
     # round mass to given resolution
     # _raw["Mass"] = np.around(_raw["Mass"], decimals=np.log10(1 / resolution))
     # to be consistent with the original code, we use floor, as 'around' does not solve the issue of combining peaks
-    _raw["Mass"] = np.floor(_raw["Mass"] / resolution) * resolution
+    _raw["Mass"] = np.floor(_raw["Mass"] / res_mz) * res_mz
 
 
     # combine peaks with the same mass
@@ -21,7 +21,7 @@ def peaks_combine(_raw: pd.DataFrame, resolution: float = 0.01) -> pd.DataFrame:
     return pd.concat(temp)
 
 def filter_occ(
-    raw: pd.DataFrame, resolution: float = 0.01, count: int = 10
+    raw: pd.DataFrame, res_mz: float = 0.01, count: int = 10
 ) -> pd.DataFrame:
     """
     Filter out peaks that occur less than count times in the data.
@@ -31,7 +31,7 @@ def filter_occ(
     :return: List of filtered peaks.
     """
     # do peaks combine
-    process = peaks_combine(raw, resolution)
+    process = peaks_combine(raw, res_mz)
     # extract unique peak list
     peaks = process["Mass"].value_counts()
     # filter peaks occur less than count times
@@ -40,7 +40,7 @@ def filter_occ(
     return process
 
 def filter_mat(mat_list: list[pd.DataFrame], threshold: float = 0.2, lock: bool = False, method: str = "all",
-               INCLUDE_LIST: list[float] = None, EXCLUDE_LIST: list[float] = None) -> list[pd.DataFrame]:
+               INCLUDE_LIST: list[float] = None, EXCLUDE_LIST: list[float] = None):
     mz_counts = defaultdict(int)
     if method == "all":
         # Filter all matrices together

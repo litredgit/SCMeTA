@@ -21,6 +21,7 @@ from SCMeTA.file import load_data, load_from_database
 from SCMeTA.config import setup_config, setup_logger
 from SCMeTA.accelerate import MultiProcessing
 from SCMeTA.file.format import SCData
+from SCMeTA.tool import check_path
 
 def use_default_param(param_mapping: list[str]):
     """ A decorator to use instance variables as default values for function parameters."""
@@ -441,34 +442,43 @@ class Process:
         outdf.to_csv(os.path.join(dir_path, f"{type}.csv"))
 
 
-    def save(self, file_name: str | None = None, data_type: str = "cell_mat", path: str | None = None):
+    def save(self, file_name: str | None = None, suffix: str | None = None, attr: str = "cell_mat", path: str | None = None):
         """
         Save the MSProcess
         Args:
             file_name: File name, if None, all files will be processed.
-            data_type: File type, default "cell_mat", other types saved in SCData is also supported.
+            suffix: Suffix to add to the file name, default None.
+            attr: Target save attr in SCData, default "cell_mat", other types saved in SCData is also supported.
             path: Path to save the file, default None,
              which means the file will be saved in the same directory as the data you loaded.
         """
         if path is None:
-            dir_path = os.path.join(self.__dir, "Process")
-        else:
-            dir_path = path
-
+            path = os.path.join(self.__dir, "Process")
+        dir_path = check_path(path, do='w')
         self.logger.info(f"Save data in {dir_path}.")
-        if not os.path.exists(dir_path):
-            os.mkdir(dir_path)
-        if data_type not in ["cell_mat", "mat", "process", "raw"]:
+
+        if attr not in ["cell_mat", "mat", "process", "raw"]:
             raise ValueError("Data type not supported.")
-        if file_name is None:
-            for ms_data in self.data.values():
-                ms_data.__getattribute__(data_type).to_csv(
-                    os.path.join(dir_path, f"{ms_data.name}_{data_type}.csv")
+        if suffix is not None:
+            if file_name is None:
+                for ms_data in self.data.values():
+                    ms_data.__getattribute__(attr).to_csv(
+                        os.path.join(dir_path, f"{ms_data.name}_{attr}.csv")
+                    )
+            else:
+                self.data[file_name].__getattribute__(attr).to_csv(
+                    os.path.join(dir_path, f"{file_name}_{attr}.csv")
                 )
         else:
-            self.data[file_name].__getattribute__(data_type).to_csv(
-                os.path.join(dir_path, f"{file_name}_{data_type}.csv")
-            )
+            if file_name is None:
+                for ms_data in self.data.values():
+                    ms_data.__getattribute__(attr).to_csv(
+                        os.path.join(dir_path, f"{ms_data.name}.csv")
+                    )
+            else:
+                self.data[file_name].__getattribute__(attr).to_csv(
+                    os.path.join(dir_path, f"{file_name}.csv")
+                )
 
     @use_default_param(["res_mz", "count"])
     def pre_process(

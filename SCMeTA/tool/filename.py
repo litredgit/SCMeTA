@@ -37,11 +37,12 @@ def check_path(path: str, do: str = 'r', type: list = ['csv'], sort: str = "alph
         For 'r' mode: A dictionary with sorted filenames as keys and their absolute paths as values.
         For 'w' mode: The directory path where files can be written.
     """
+    type_lower = [ext.lower() for ext in type]
     if do == 'r':
         if not os.path.exists(path):
             raise FileNotFoundError(f"The path '{path}' does not exist.")
         if os.path.isfile(path):
-            if any(path.endswith(f".{ext}") for ext in type):
+            if any(path.lower().endswith(f".{ext}") for ext in type_lower):
                 files = {os.path.basename(path).split('.')[0]: os.path.abspath(path)}
             else:
                 raise ValueError(f"The file '{path}' does not have one of the required extensions: {type}.")
@@ -49,7 +50,7 @@ def check_path(path: str, do: str = 'r', type: list = ['csv'], sort: str = "alph
             files = {
                 os.path.basename(f).split('.')[0]: os.path.abspath(os.path.join(path, f))
                 for f in os.listdir(path)
-                if any(f.endswith(f".{ext}") for ext in type)
+                if any(f.lower().endswith(f".{ext}") for ext in type_lower)
             }
         else:
             raise ValueError(f"The path '{path}' is neither a file nor a directory.")
@@ -60,7 +61,7 @@ def check_path(path: str, do: str = 'r', type: list = ['csv'], sort: str = "alph
         files = sort_filename(data=files, sort=sort)
         return files
     elif do == 'w':
-        if os.path.isfile(path) and any(path.endswith(f".{ext}") for ext in type):
+        if os.path.isfile(path) and any(path.lower().endswith(f".{ext}") for ext in type_lower):
             return os.path.dirname(path)
         elif os.path.isdir(path):
             return path

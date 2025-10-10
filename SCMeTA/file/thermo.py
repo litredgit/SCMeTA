@@ -13,7 +13,7 @@ def load_txt(path):
 
 def load_thermo(path, include_ms2=False, filter_resolution: bool = True) -> pd.DataFrame:
     reader = RawFileReader(file_path=path)
-    data = reader.to_dataframe(include_ms2=include_ms2, filter_threshold=10)
+    data = reader.to_dataframe(include_ms2=include_ms2)
     if filter_resolution:
         peaks, _ = find_peaks(data["Intensity"], distance=16)
         data = data.iloc[peaks]

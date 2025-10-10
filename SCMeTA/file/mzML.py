@@ -1,7 +1,7 @@
 import pymzml, os
 import pandas as pd
 from SCMeTA.file.format import SCData
-from tqdm import tqdm
+from tqdm import trange
 import numpy as np
 
 def _parse_mzml(file_path: str, load_range: tuple[int, int] | None=None) -> pd.DataFrame:
@@ -15,6 +15,9 @@ def _parse_mzml(file_path: str, load_range: tuple[int, int] | None=None) -> pd.D
         build_index_from_scratch=True,  # 禁用耗时索引
         MS_precisions={1: 5e-6, 2: 20e-6}  # 设置精度减少计算
     )
+    total_scans = run.get_spectrum_count()
+    if load_range is None:
+        load_range = (1, total_scans)
 
     # 预分配内存（减少动态扩容开销）
     scan_nums, masses, intensities = [], [], []
@@ -23,11 +26,8 @@ def _parse_mzml(file_path: str, load_range: tuple[int, int] | None=None) -> pd.D
     intensities_append = intensities.append
     file_name = os.path.splitext(os.path.basename(file_path))[0]
 
-    # 使用迭代器+进度条
-    for scan_num, spec in enumerate(tqdm(run, desc=f"Parsing {file_name}")):
-        if load_range and not (load_range[0] <= scan_num <= load_range[1]):
-            continue
-
+    for scan_num in trange(load_range[0], load_range[1]+1, desc=f"Parsing {file_name}"):
+        spec = run[scan_num]
         mz_array = np.around(spec.mz, decimals=3)
         i_array = np.around(spec.i, decimals=3)
 

@@ -2,6 +2,7 @@ import os
 
 from SCMeTA.accelerate import MultiProcessing
 from SCMeTA.accelerate import MultiThreader
+from RawFileReader.RawFileExacter import RawFileReader
 
 from .thermo import load_thermo_data
 from .process import load_process_data

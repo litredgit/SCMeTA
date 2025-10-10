@@ -26,5 +26,4 @@ def load_thermo_data(name, path, target_attr, load_range, include_ms2=False, fil
     df = load_thermo(path=path, include_ms2=include_ms2, filter_resolution=filter_resolution)
     scdata = SCData(name=name)
     setattr(scdata, target_attr, df)
-    dict = {name: scdata}
-    return dict
+    return scdata

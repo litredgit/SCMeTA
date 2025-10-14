@@ -9,5 +9,6 @@ sc.load(path, data_type="mzML", method="one by one") # MultiProcess would take m
 
 sc.pre_process()
 sc.process()
-data = sc.post_process() # if input nothing, post_process will process self.data. return data[str:SCData]
+sc.post_process()
+
 sc.save(path=path)

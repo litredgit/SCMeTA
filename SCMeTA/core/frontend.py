@@ -55,4 +55,4 @@ def ws_save(args):
 def web(app, host="0.0.0.0", port=5000, debug=True):
     sys.stdout = StreamRedirector('stdout')
     sys.stderr = StreamRedirector('stderr')
-    socketio.run(app=app, host=host, port=port, debug=debug)
+    socketio.run(app=app, host=host, port=port, debug=debug, allow_unsafe_werkzeug=True)

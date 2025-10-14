@@ -1,5 +1,7 @@
+# Rawfilereader Package
+psims
+
 # Data Process Package
-pyRawTools
 pymzml
 tqdm
 pythonnet
@@ -11,5 +13,10 @@ umap-learn
 polars
 combat
 requests
+
+# GUI Package
+flask
+flask-socketio
+
 # Data Visualization Package
 matplotlib

@@ -5,6 +5,6 @@ from .core import web, app
 __all__ = [
     "Process",
     "Plot",
-    "socketio",
+    "web",
     "app"
 ]

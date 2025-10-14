@@ -39,23 +39,6 @@
    ]
   },
   {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "load(): Add a file to the MSProcess\n",
-    "\n",
-    "Args:\n",
-    "1. `path: str`\n",
-    "2. `file_name: str | None = None`\n",
-    "3. `data_type: str = \"thermo\"`: Data type, default`\"thermo\"` .raw file, can be `\"waters\"` .wiff file / `\"mzML\"` .mzML file / `\"process\"` .csv file.\n",
-    "4. `method str = \"MultiThread\"`: Method to load, can be `\"MultiProcess\"`, `\"one by one\"`.\n",
-    "\n",
-    "Returns:\n",
-    "1. `self.data: dict[file_name, SCData]`\n",
-    "2. `self.__dir = os.path.dirname(path)`"
-   ]
-  },
-  {
    "cell_type": "code",
    "execution_count": null,
    "metadata": {},
@@ -63,25 +46,6 @@
    "source": [
     "# Pre-process is necessary\n",
     "sc.pre_process()"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "pre_process(): Pre-process the data, including peak_combine, offset, cut, and round.\n",
-    "\n",
-    "Args:\n",
-    "1. `file_name: str | list[str] | None = None`\n",
-    "2. `offset: float | None = None`\n",
-    "3. `cut_range: tuple[int, int] | None = None`\n",
-    "4. `resolution: float = PARAMETERS.resolution`=0.01\n",
-    "5. `count: int = PARAMETERS.count`=10\n",
-    "6. `offset_method: str = \"same\"`: Method to set offset, default `\"same\"`, can be `\"separatedly\"`.\n",
-    "7. `cut_method: str = \"same\"`: Method to cut the data, default `\"same\"`, can be `\"separatedly\"`.\n",
-    "\n",
-    "Returns:\n",
-    "1. `self.data.values().process: pd.Dataframe`"
    ]
   },
   {
@@ -97,22 +61,6 @@
    ]
   },
   {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "process():\n",
-    "\n",
-    "Args:\n",
-    "1. `max_ratio: float = PARAMETERS.maxratio`=0.1: \n",
-    "2. `adjacent: int = PARAMETERS.adjacent`=3:\n",
-    "3. `snr: float = PARAMETERS.snr`=3.0:\n",
-    "4. `resolution_intensity: float = PARAMETERS.resolution_intensity`=0.01:\n",
-    "5. `threshold: float = PARAMETERS.threshold`=0.2:\n",
-    "6. `lock_mz: bool = PARAMETERS.lock`=False:\n",
-    "7. `filter_method: str = \"all\"`: default `\"all\"`, can be `\"any\"`\n"
-   ]
-  },
-  {
    "cell_type": "code",
    "execution_count": null,
    "metadata": {
@@ -121,23 +69,7 @@
    "outputs": [],
    "source": [
     "# Post-Process Data\n",
-    "data = sc.post_process()"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "post_process():\n",
-    "\n",
-    "Args:\n",
-    "1. `data: dict[str, SCData] = None`\n",
-    "2. `normalize_method=None`=\"mz\": Method of normalization, default `\"mz\"`, can be `\"zscore\"` `\"max\"` `\"sum\"` `\"quantile\"` `\"log\"`\n",
-    "3. `fillna_method: str = \"none\"`=\"knn\": Method of filling nan, default `\"knn\"`, can be `\"zero\"` `\"none\"`\n",
-    "4. `tags: list[str] = None`: Tags of the data, abandoned\n",
-    "\n",
-    "Returns:\n",
-    "`data: dict[str, SCData]`: Dict of MSData\n"
+    "sc.post_process()"
    ]
   },
   {
@@ -148,19 +80,14 @@
    "source": [
     "# Optional\n",
     "# Save Data\n",
-    "sc.save(data, path)"
+    "sc.save(path)"
    ]
   },
   {
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "save(): Save the MSProcess\n",
-    "\n",
-    "Args:\n",
-    "1. `file_name: str | None = None`\n",
-    "2. `data_type: str = \"cell_mat\"`: File type, default `\"cell_mat\"`, can be `\"mat\"`, `\"process\"`, `\"raw\"`\n",
-    "3. `path: str | None = None`=path/Process\n"
+    "## Plot example"
    ]
   },
   {
@@ -182,25 +109,8 @@
    "source": [
     "# Visualize Data\n",
     "path = \"path to data\"\n",
-    "plot = Plot(path)\n",
-    "plot.load(path=plot.path)"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "Plot(): Class to plot data\n",
-    "\n",
-    "Properties:\n",
-    "\n",
-    "`self.path: str |None = None`\n",
-    "load(): load data for plot\n",
-    "\n",
-    "Args:\n",
-    "1. `data: dict[str, SCData] | None = None`\n",
-    "2. `path: str | None = None`\n",
-    "3. `sort_key: str=\"alphabetical\"`: method to sort index, default `\"alphabetical\"`, can be `\"manual\"` or other sortkey in `sorted(key=lambda x: sortkey(x))`"
+    "plot = Plot()\n",
+    "plot.load(path)"
    ]
   },
   {
@@ -209,18 +119,7 @@
    "metadata": {},
    "outputs": [],
    "source": [
-    "plot.pca()\n"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "metadata": {},
-   "source": [
-    "Args:\n",
-    "\n",
-    "1. `save: bool=False`: only auto save when `save is True`\n",
-    "2. `save_path: str | None=None`=plot.path\n",
-    "3. `dpi: int | None = None`=300"
+    "plot.pca()"
    ]
   },
   {

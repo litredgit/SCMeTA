@@ -325,10 +325,10 @@
                     <div><label>file_name (str 或 list):【Process.cut_offset】截取和偏移目标文件名，可英文逗号分隔</label><br><input id="pre_file_name" placeholder="文件名,可英文逗号分隔"></div>
                     <div><label>cut_range (tuple[int,int]):【Process.cut_offset】扫描帧截取范围</label><br><input id="pre_cut_range" placeholder="如 0,100"></div>
                     <div><label>offset (float):【Process.cut_offset】质荷比偏移量</label><br><input id="pre_offset" placeholder="offset"></div>
-                    <div><label>resolution (float):【Process.filter_occ】质荷比分辨率，决定合并精度</label><br><input id="pre_resolution" placeholder="resolution" value="0.01"></div>
+                    <div><label>res_mz (float):【Process.filter_occ】质荷比分辨率，决定合并精度</label><br><input id="pre_res_mz" placeholder="res_mz" value="0.01"></div>
                     <div><label>count (int):【Process.filter_occ】质荷比最小出现次数</label><br><input id="pre_count" placeholder="count" value="10"></div>
                     <div><label>clear_mem (bool):【Process.clear_memory】是否清理内存</label><br><select id="pre_clear_mem"><option value="false">否</option><option value="true">是</option></select></div><button onclick="emitSocket('pre_process', {
-                        resolution: parseFloat(pre_resolution.value),
+                        res_mz: parseFloat(pre_res_mz.value),
                         count: parseInt(pre_count.value),
                         file_name: pre_file_name.value ? (pre_file_name.value.includes(',') ? pre_file_name.value.split(',') : pre_file_name.value) : null,
                         offset: pre_offset.value ? parseFloat(pre_offset.value) : null,
@@ -338,8 +338,8 @@
                 </div>
                 <div class="step-content" style="display:none">
                     <h2>Step 4: 处理 (Process.process)</h2>
-                    <div><label>min_intensity (float):【Process.gen_mat】最小强度，生成矩阵阈值</label><br><input id="min_intensity" placeholder="min_intensity" value="0"></div>
-                    <div><label>resolution_intensity (float):【Process.round_mat】强度分辨率</label><br><input id="resolution_intensity" placeholder="resolution_intensity" value="0.01"></div>
+                    <div><label>min_intens (float):【Process.gen_mat】最小强度，生成矩阵阈值</label><br><input id="min_intens" placeholder="min_intens" value="0"></div>
+                    <div><label>res_intens (float):【Process.round_mat】强度分辨率</label><br><input id="res_intens" placeholder="res_intens" value="0.01"></div>
                     <div><label>mz_interval (float):【Process.combine_peaks】m/z最大合并差值</label><br><input id="mz_interval" placeholder="mz_interval" value="0"></div>
                     <div><label>max_ratio (float):【Process.denoise】最大比值，细胞提取阈值</label><br><input id="max_ratio" placeholder="max_ratio" value="0.1"></div>
                     <div><label>adjacent (int):【Process.merge_cell】合并相邻细胞数</label><br><input id="adjacent" placeholder="adjacent" value="3"></div>
@@ -355,8 +355,8 @@
                     </div>
                     <div><label>clear_mem (bool):【Process.clear_memory】是否清理内存</label><br><select id="process_clear_mem"><option value="false">否</option><option value="true">是</option></select></div>
                     <button onclick="emitSocket('process', {
-                        min_intensity: parseFloat(min_intensity.value),
-                        resolution_intensity: parseFloat(resolution_intensity.value),
+                        min_intens: parseFloat(min_intens.value),
+                        res_intens: parseFloat(res_intens.value),
                         mz_interval: parseFloat(mz_interval.value),
                         max_ratio: parseFloat(max_ratio.value),
                         adjacent: parseInt(adjacent.value),

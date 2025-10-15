@@ -19,7 +19,7 @@ class StreamRedirector:
 
 @app.route('/')
 def index():
-    return send_file('frontend.html')
+    return send_file('./static/web.html')
 
 @socketio.on('init')
 def ws_init(data):
@@ -52,7 +52,7 @@ def ws_save(args):
     proc.save(**args)
     emit('step_done', {'step': 'save'})
 
-def web(app, host="0.0.0.0", port=5000, debug=True):
+def web(app=app, host="0.0.0.0", port=5000, debug=True):
     sys.stdout = StreamRedirector('stdout')
     sys.stderr = StreamRedirector('stderr')
     socketio.run(app=app, host=host, port=port, debug=debug, allow_unsafe_werkzeug=True)

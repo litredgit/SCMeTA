@@ -1,1 +1,1 @@
-from .visualize import plot_eic
+from .visualize import show_eic

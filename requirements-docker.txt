@@ -20,6 +20,7 @@ flask-socketio
 
 # Data Visualization Package
 matplotlib
+bokeh
 
 # Jupyter Notebook
 jupyterlab

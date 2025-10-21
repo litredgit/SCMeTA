@@ -2,10 +2,11 @@ import pandas as pd
 
 from bokeh.layouts import column
 from bokeh.models import RangeTool
-from bokeh.plotting import figure, show
+from bokeh.plotting import figure, output_notebook, show
+from bokeh.io import push_notebook
 
 
-def range_tool(process: pd.DataFrame, refer_mz: float) -> (int, int):
+def range_tool(process: pd.DataFrame, refer_mz: float=750.58, output: str="notebook"):
     xic = process.loc[process["Mass"] == refer_mz]
     xic.reset_index(inplace=True)
     start = xic["Scan"].min()
@@ -15,7 +16,7 @@ def range_tool(process: pd.DataFrame, refer_mz: float) -> (int, int):
         width=800,
         tools="xpan",
         toolbar_location=None,
-        x_axis_type="datetime",
+        x_axis_type="auto",
         x_axis_location="above",
         background_fill_color="#efefef",
         x_range=(start, end),
@@ -28,7 +29,7 @@ def range_tool(process: pd.DataFrame, refer_mz: float) -> (int, int):
         height=130,
         width=800,
         y_range=p.y_range,
-        x_axis_type="datetime",
+        x_axis_type="auto",
         y_axis_type=None,
         tools="",
         toolbar_location=None,
@@ -42,6 +43,12 @@ def range_tool(process: pd.DataFrame, refer_mz: float) -> (int, int):
     select.line("Scan", "Intensity", source=xic)
     select.ygrid.grid_line_color = None
     select.add_tools(rt)
-    select.toolbar.active_multi = rt
-
-    show(column(p, select))
+    if output == "notebook":
+        output_notebook()
+        show(column(p, select))
+    elif output == "ide":
+        output_notebook()
+        handle = show(column(p, select), notebook_handle=True)
+        push_notebook(handle=handle)
+    else:
+        show(column(p, select))

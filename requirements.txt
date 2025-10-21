@@ -20,3 +20,4 @@ flask-socketio
 
 # Data Visualization Package
 matplotlib
+bokeh

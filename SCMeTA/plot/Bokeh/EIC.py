@@ -5,23 +5,26 @@ from bokeh.models import RangeTool
 from bokeh.plotting import figure, output_notebook, show
 from bokeh.io import push_notebook
 
-
-def range_tool(process: pd.DataFrame, refer_mz: float=750.58, output: str="notebook"):
-    xic = process.loc[process["Mass"] == refer_mz]
-    xic.reset_index(inplace=True)
-    start = xic["Scan"].min()
-    end = xic["Scan"].max()
+def show_eic(process: pd.DataFrame, refer_mz: float=760.58, output: str="notebook"):
+    xic = pd.DataFrame({
+        "Scan": process.index,
+        "Intensity": process[refer_mz]
+    })
+    start = xic.index.min()
+    end = xic.index.max()
     p = figure(
+        title=f"EIC {refer_mz}",
         height=300,
         width=800,
-        tools="xpan",
-        toolbar_location=None,
+        tools="hover,pan,wheel_zoom,box_zoom,reset,save",
+        toolbar_location="right",
         x_axis_type="auto",
         x_axis_location="above",
         background_fill_color="#efefef",
         x_range=(start, end),
     )
     p.line("Scan", "Intensity", source=xic)
+    p.xaxis.axis_label = "Scan"
     p.yaxis.axis_label = "Intensity"
 
     select = figure(
@@ -32,7 +35,7 @@ def range_tool(process: pd.DataFrame, refer_mz: float=750.58, output: str="noteb
         x_axis_type="auto",
         y_axis_type=None,
         tools="",
-        toolbar_location=None,
+        toolbar_location="right",
         background_fill_color="#efefef",
     )
 
@@ -43,6 +46,7 @@ def range_tool(process: pd.DataFrame, refer_mz: float=750.58, output: str="noteb
     select.line("Scan", "Intensity", source=xic)
     select.ygrid.grid_line_color = None
     select.add_tools(rt)
+
     if output == "notebook":
         output_notebook()
         show(column(p, select))

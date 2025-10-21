@@ -183,7 +183,7 @@ class Process:
                 self.data[file_name].mat, res_intens
             )
         for ms_data in self.data.values():
-            show_eic(ms_data.mat, mz=self.ref_mz)
+            show_eic(ms_data.mat, refer_mz=self.ref_mz)
 
     @use_default_param(["mz_interval"])
     def combine_peaks(self, mz_interval: float, file_name: str | None = None):

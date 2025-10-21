@@ -1,2 +1,2 @@
-from .range_tools import range_tool
+from .EIC import show_eic
 from .heatmap import heatmap

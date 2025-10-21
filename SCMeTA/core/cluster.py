@@ -182,8 +182,6 @@ class Process:
             self.data[file_name].mat = round_columns(
                 self.data[file_name].mat, res_intens
             )
-        for ms_data in self.data.values():
-            show_eic(ms_data.mat, refer_mz=self.ref_mz)
 
     @use_default_param(["mz_interval"])
     def combine_peaks(self, mz_interval: float, file_name: str | None = None):
@@ -394,6 +392,30 @@ class Process:
                 value.clear(attributes=attributes_to_clear)
         else:
             self.data[file_name].clear(attributes=attributes_to_clear)
+
+    def show_bokeh(self, file_name: str | None = None, attr: str="mat", type: str="eic", refer_mz: float | None = None, output: str = "notebook"):
+        """
+        Show the data by Bokeh
+        Args:
+            file_name: File name, if None, all files will be processed.
+            attr: Target attr in SCData, default "mat", other attributes in SCData is also supported.
+            type: Plot type, default "eic", other types is not supported yet.
+            refer_mz: Reference m/z for EIC plot, default None, which means self.ref_mz will be used.
+            output: Output type, default "notebook", can be "notebook", "ide", or "browser".
+        """
+        FUNC = {
+            "eic": show_eic
+            # "tic": show_tic,
+            # "bpc": show_bpc
+        }
+        if refer_mz is None:
+            refer_mz = self.ref_mz
+
+        if file_name is None:
+            for ms_data in self.data.values():
+                FUNC[type](ms_data.mat, refer_mz=refer_mz, output=output)
+        else:
+            FUNC[type](self.data[file_name].mat, refer_mz=refer_mz, output=output)
 
     def FormatConvert(
             self, 

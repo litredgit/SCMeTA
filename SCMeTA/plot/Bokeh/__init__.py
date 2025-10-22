@@ -1,2 +1,2 @@
-from .EIC import show_eic
+from .xic import show_xic
 from .heatmap import heatmap

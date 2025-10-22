@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from SCMeTA.plot import show_xic
 import pandas as pd
 
 @dataclass
@@ -54,8 +55,13 @@ class SCData:
     def xic(self, mz: float):
         return self.process.loc[self.process["Mass"] == mz]
 
-    def show(self, _type="xic", **kwargs):
-        pass
+    def show(self, type="xic", attr="raw", refer_mz: float=760.58, output: str="notebook"):
+        FUNC = {
+            "xic": show_xic
+            # "tic": show_tic,
+            # "bpc": show_bpc
+        }
+        FUNC[type](self.raw, refer_mz, attr, output)
 
     def get_scan(self, scan: int, data_type: str = "raw"):
         if data_type == "raw":

@@ -22,7 +22,6 @@ from SCMeTA.config import setup_config, setup_logger
 from SCMeTA.accelerate import MultiProcessing
 from SCMeTA.file.format import SCData
 from SCMeTA.tool import check_path
-from SCMeTA.plot import show_eic
 
 def use_default_param(param_mapping: list[str]):
     """ A decorator to use instance variables as default values for function parameters."""
@@ -375,6 +374,9 @@ class Process:
                     ]
                 )
             )
+            
+    def show(self):
+        pass
 
     def clear_memory(self, file_name: str | None = None, attributes:list[str] | None = None):
         """
@@ -398,30 +400,6 @@ class Process:
                 value.clear(attributes=attributes_to_clear)
         else:
             self.data[file_name].clear(attributes=attributes_to_clear)
-
-    def show_bokeh(self, file_name: str | None = None, attr: str="mat", type: str="eic", refer_mz: float | None = None, output: str = "notebook"):
-        """
-        Show the data by Bokeh
-        Args:
-            file_name: File name, if None, all files will be processed.
-            attr: Target attr in SCData, default "mat", other attributes in SCData is also supported.
-            type: Plot type, default "eic", other types is not supported yet.
-            refer_mz: Reference m/z for EIC plot, default None, which means self.ref_mz will be used.
-            output: Output type, default "notebook", can be "notebook", "ide", or "browser".
-        """
-        FUNC = {
-            "eic": show_eic
-            # "tic": show_tic,
-            # "bpc": show_bpc
-        }
-        if refer_mz is None:
-            refer_mz = self.ref_mz
-
-        if file_name is None:
-            for ms_data in self.data.values():
-                FUNC[type](ms_data.mat, refer_mz=refer_mz, output=output)
-        else:
-            FUNC[type](self.data[file_name].mat, refer_mz=refer_mz, output=output)
 
     def FormatConvert(
             self, 

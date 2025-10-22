@@ -101,48 +101,53 @@ class Process:
         for key, value in data.items():
             self.data.update(load_data(value, key, "database"))
 
-    def cut_offset(self,
-                   file_name: str | list[str]| None = None,
-                   offset: float | None = None,
-                   ranges: list[list[int, int]] | list[int, int] | None = None,
-                   type: str = "cut"
-                   ):
+    def cut(self, file_name: str | None = None, ranges: list[list[int, int]] | list[int, int] | None = None, type: str = "cut"):
         """
-        Cut and offset the data
+        Cut or drop scan ranges from one or more files' data.
         Args:
-            file_name: File name list, if None, all files will be processed.
-            offset: Offset of the data, if None, it will ignore the offset step.
-            ranges: Cut range of the data, if None, it will ignore the cut step.
-            type: Type of cut, "cut" or "drop", default "cut".
+            file_name: Single file name, or None for all files.
+            ranges: Cut/drop ranges to apply. If None, nothing will be done.
+            type: "cut" to keep ranges, "drop" to remove ranges.
         """
-        if offset is None and ranges is None:
-            self.logger.info("No offset or cut range.")
-        else:
-            if isinstance(file_name, str):
-                file_list = [file_name]
-            elif isinstance(file_name, list):
-                file_list = file_name
-            elif file_name is None:
-                file_list = list(self.data.keys())
-            else:
-                raise ValueError("File name not str or list.")
-            # Check if the file is in the data dictionary
-            for file in file_list:
-                if file not in list(self.data.keys()):
-                    raise ValueError(f"{file} not in data")
-            # do offset and cut
-            if offset is not None:
-                for file in file_list:
-                    self.data[file].set_offset(offset=offset)
-                self.logger.info(f"Offset {offset} for {file_list}.")
-            if ranges is not None:
+        if ranges is None:
+            self.logger.info("No cut ranges provided.")
+            return
+
+        if file_name is None:
+            for file in self.data.keys():
                 FUNC = {
                     "cut": self.data[file].cut,
-                    "drop": self.data[file].drop
+                    "drop": self.data[file].drop,
                 }
-                for file in file_list:
-                    FUNC[type](ranges=ranges)
-                self.logger.info(f"{type} ranges {ranges} for {file_list}.")
+                FUNC[type](ranges=ranges)
+        else:
+            file = file_name
+            FUNC = {
+                "cut": self.data[file].cut,
+                "drop": self.data[file].drop,
+            }
+            FUNC[type](ranges=ranges)
+
+        self.logger.info(f"{type} ranges {ranges}.")
+
+    def offset(self, file_name: str | None = None, offset: float | None = None):
+        """
+        Apply an m/z offset to one or more files' data.
+        Args:
+            file_name: Single file name, or None for all files.
+            offset: Offset value to apply. If None, nothing will be done.
+        """
+        if offset is None:
+            self.logger.info("No offset provided.")
+            return
+
+        if file_name is None:
+            for file in self.data.keys():
+                self.data[file].set_offset(offset)
+        else:
+            self.data[file_name].set_offset(offset)
+
+        self.logger.info(f"Offset {offset}.")
 
     @use_default_param(["res_mz"])
     def round_mz(self, res_mz: float):
@@ -525,7 +530,8 @@ class Process:
 
         """
         self.logger.info("Pre-process begin.")
-        self.cut_offset(file_name=file_name, ranges=ranges, offset=offset, type=type)
+        self.cut(file_name=file_name, ranges=ranges, type=type)
+        self.offset(file_name=file_name, offset=offset)
         self.round_mz(res_mz=res_mz)
         self.filter_occ(count=count)
         if clear_mem:

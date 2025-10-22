@@ -15,7 +15,7 @@ from SCMeTA.method import (
     convert_format,
     combine_peaks,
 )
-from SCMeTA.batch import combat_batch_correction
+# from SCMeTA.batch import combat_batch_correction
 from SCMeTA.method.fill import fill_mat
 from SCMeTA.file import load_data, load_from_database
 from SCMeTA.config import setup_config, setup_logger
@@ -101,7 +101,7 @@ class Process:
         for key, value in data.items():
             self.data.update(load_data(value, key, "database"))
 
-    def cut(self, file_name: str | None = None, ranges: list[list[int, int]] | list[int, int] | None = None, type: str = "cut"):
+    def cut(self, file_name: str | list[str] | None = None, ranges: list[list[int, int]] | list[int, int] | None = None, type: str = "cut"):
         """
         Cut or drop scan ranges from one or more files' data.
         Args:
@@ -113,15 +113,8 @@ class Process:
             self.logger.info("No cut ranges provided.")
             return
 
-        if file_name is None:
-            for file in self.data.keys():
-                FUNC = {
-                    "cut": self.data[file].cut,
-                    "drop": self.data[file].drop,
-                }
-                FUNC[type](ranges=ranges)
-        else:
-            file = file_name
+        filelist = self.get_filelist(file_name)
+        for file in filelist:
             FUNC = {
                 "cut": self.data[file].cut,
                 "drop": self.data[file].drop,
@@ -130,7 +123,7 @@ class Process:
 
         self.logger.info(f"{type} ranges {ranges}.")
 
-    def offset(self, file_name: str | None = None, offset: float | None = None):
+    def offset(self, file_name: str | list[str] | None = None, offset: float | None = None):
         """
         Apply an m/z offset to one or more files' data.
         Args:
@@ -141,11 +134,9 @@ class Process:
             self.logger.info("No offset provided.")
             return
 
-        if file_name is None:
-            for file in self.data.keys():
-                self.data[file].set_offset(offset)
-        else:
-            self.data[file_name].set_offset(offset)
+        filelist = self.get_filelist(file_name)
+        for file in filelist:
+            self.data[file].set_offset(offset)
 
         self.logger.info(f"Offset {offset}.")
 
@@ -164,7 +155,7 @@ class Process:
     def filter_occ(
         self,
         count: int,
-        file_name: str | None = None,
+        file_name: str | list[str] | None = None,
     ):
         """
         Filter out the data with low occurrence
@@ -173,37 +164,27 @@ class Process:
             file_name: File name, if None, all files will be processed.
         """
         self.logger.info(f"Filter mz occurred < count: {count}.")
-        if file_name is None:
-            # self.__mp.run(self.data, _filter_occ, resolution, count)
-            for ms_data in self.data.values():
-                ms_data.process = filter_occ(ms_data.raw.copy(), count)
-        else:
-            self.data[file_name].process = filter_occ(
-                self.data[file_name].raw.copy(), count
-            )
+        filelist = self.get_filelist(file_name)
+        # self.__mp.run(self.data, _filter_occ, resolution, count)
+        for name in filelist:
+            self.data[name].process = filter_occ(self.data[name].raw.copy(), count)
 
     @use_default_param(["min_intens"])
-    def gen_mat(self, min_intens: float, file_name: str | None = None):
+    def gen_mat(self, min_intens: float, file_name: str | list[str] | None = None):
         self.logger.info(f"Convert data format to crosstab with min_intens {min_intens}.")
-        if file_name is None:
-            for ms_data in self.data.values():
-                ms_data.mat = to_mat(data=ms_data.process, min_intens=min_intens)
-        else:
-            self.data[file_name].mat = to_mat(data=self.data[file_name].process, min_intens=min_intens)
+        filelist = self.get_filelist(file_name)
+        for name in filelist:
+            self.data[name].mat = to_mat(data=self.data[name].process, min_intens=min_intens)
     
     @use_default_param(["res_intens"])
-    def round_mat(self, res_intens: float, file_name: str | None = None):
+    def round_mat(self, res_intens: float, file_name: str | list[str] | None = None):
         self.logger.info(f"Round intensity to res_intens: {res_intens}.")
-        if file_name is None:
-            for ms_data in self.data.values():
-                ms_data.mat = round_columns(ms_data.mat, res_intens)
-        else:
-            self.data[file_name].mat = round_columns(
-                self.data[file_name].mat, res_intens
-            )
+        filelist = self.get_filelist(file_name)
+        for name in filelist:
+            self.data[name].mat = round_columns(self.data[name].mat, res_intens)
 
     @use_default_param(["mz_interval"])
-    def combine_peaks(self, mz_interval: float, file_name: str | None = None):
+    def combine_peaks(self, mz_interval: float, file_name: str | list[str] | None = None):
         """
         Combine the columns which the difference is less than mz_interval
         Args:
@@ -212,18 +193,14 @@ class Process:
         """
         if mz_interval > 0:
             self.logger.info(f"Combine peaks with mz interval < {mz_interval}.")
-            if file_name is None:
-                for ms_data in self.data.values():
-                    ms_data.mat = combine_peaks(ms_data.mat, mz_interval=mz_interval)
-            else:
-                self.data[file_name].mat = combine_peaks(
-                    self.data[file_name].mat, mz_interval=mz_interval
-                )
+            filelist = self.get_filelist(file_name)
+            for name in filelist:
+                self.data[name].mat = combine_peaks(self.data[name].mat, mz_interval=mz_interval)
         else:
             self.logger.info(f"mz_interval <= 0, skip combine peaks step.")
 
     @use_default_param(["max_ratio"])
-    def denoise(self, max_ratio: float, file_name: str | None = None):
+    def denoise(self, max_ratio: float, file_name: str | list[str] | None = None):
         """
         Find cell and subtract noise.
         Args:
@@ -231,22 +208,15 @@ class Process:
             file_name: File name, if None, all files will be processed.
         """
         self.logger.info(f"Find cells: ref_mz: {self.ref_mz} > max_ratio: {max_ratio} * max intensity and subtract noise.")
-        if file_name is None:
-            for ms_data in self.data.values():
-                ms_data.cell_pos = find_cell(
-                    ms_data.mat, self.ref_mz, max_ratio=max_ratio
-                )
-                ms_data.mat = noise_subtract(ms_data.mat, ms_data.cell_pos)
-        else:
-            ms_data = self.data[file_name]
-            ms_data.cell_pos = find_cell(
-                ms_data.mat, self.ref_mz, max_ratio=max_ratio
-            )
+        filelist = self.get_filelist(file_name)
+        for name in filelist:
+            ms_data = self.data[name]
+            ms_data.cell_pos = find_cell(ms_data.mat, self.ref_mz, max_ratio=max_ratio)
             ms_data.mat = noise_subtract(ms_data.mat, ms_data.cell_pos)
-            self.data[file_name] = ms_data
+            self.data[name] = ms_data
 
     @use_default_param(["adjacent"])
-    def merge_cell(self, adjacent: int, file_name: str | None = None):
+    def merge_cell(self, adjacent: int, file_name: str | list[str] | None = None):
         """
         Combine the adjacent cells
         Args:
@@ -255,20 +225,14 @@ class Process:
             file_name: File name, if None, all files will be processed.
         """
         self.logger.info(f"Merge cell < adjacent: {adjacent} scans.")
-        if file_name is None:
-            for ms_data in self.data.values():
-                ms_data.cell_mat = merge_cell(
-                    ms_data.mat, ms_data.cell_pos, adjacent=adjacent
-                )
-        else:
-            self.data[file_name].cell_mat = merge_cell(
-                self.data[file_name].mat,
-                self.data[file_name].cell_pos,
-                adjacent=adjacent,
+        filelist = self.get_filelist(file_name)
+        for name in filelist:
+            self.data[name].cell_mat = merge_cell(
+                self.data[name].mat, self.data[name].cell_pos, adjacent=adjacent
             )
 
     @use_default_param(["snr"])
-    def filter_assem(self, snr: float, file_name: str | None = None):
+    def filter_assem(self, snr: float, file_name: str | list[str] | None = None):
         """
         Filter out the data with Intensity/Noise < snr
         Args:
@@ -276,34 +240,23 @@ class Process:
             file_name: File name, if None, all files will be processed.
         """
         self.logger.info(f"Filter data with SNR < {snr}.")
-        if file_name is None:
-            for ms_data in self.data.values():
-                ms_data.cell_mat = filter_assem(
-                    ms_data.mat, ms_data.cell_mat, ms_data.cell_pos, snr
-                )
-        else:
-            self.data[file_name].cell_mat = filter_assem(
-                self.data[file_name].mat,
-                self.data[file_name].cell_mat,
-                self.data[file_name].cell_pos,
-                snr,
+        filelist = self.get_filelist(file_name)
+        for name in filelist:
+            self.data[name].cell_mat = filter_assem(
+                self.data[name].mat, self.data[name].cell_mat, self.data[name].cell_pos, snr
             )
 
-    def gen_process(self, file_name: str | None = None):
-        if file_name is None:
-            for ms_data in self.data.values():
-                ms_data.process = to_list(ms_data.cell_mat, ms_data.cell_pos)
-        else:
-            self.data[file_name].process = to_list(
-                self.data[file_name].cell_mat, self.data[file_name].cell_pos
-            )
+    def gen_process(self, file_name: str | list[str] | None = None):
+        filelist = self.get_filelist(file_name)
+        for name in filelist:
+            self.data[name].process = to_list(self.data[name].cell_mat, self.data[name].cell_pos)
 
     @use_default_param(["threshold", "lock_mz"])
     def filter_mat(
         self,
         threshold: float,
         lock_mz: bool,
-        name_list: list[str] | None = None,
+        file_name: str | list[str] | None = None,
         method: str = "all"
     ):
         """
@@ -317,8 +270,7 @@ class Process:
         self.logger.info(f"Filter mz occurred > threshold: {threshold} * cell_count with lock_mz {lock_mz}.")
         if lock_mz and (self.INCLUDE_LIST is None or self.EXCLUDE_LIST is None):
             raise ValueError("INCLUDE_LIST or EXCLUDE_LIST is None, cannot lock m/z.")
-        if name_list is None:
-            name_list = list(self.data.keys())
+        name_list = self.get_filelist(file_name)
         mat_list = [self.data[name].cell_mat for name in name_list]
         total_mat = list(filter_mat(
             mat_list=mat_list, threshold=threshold, lock=lock_mz, method=method,
@@ -330,69 +282,77 @@ class Process:
     def normalize(self,
                   data: dict[str, SCData],
                   normalize_method: list[str],
-                  file_name: str | None = None):
+                  file_name: str | list[str] | None = None):
         self.logger.info(f"Normalize by {normalize_method}.")
-        if file_name is None:
-            for ms_data in data.values():
-                ms_data.cell_mat = normalize(
-                    ms_data.cell_mat, normalize_method, mz=self.ref_mz
-                )
-        else:
-            data[file_name].cell_mat = normalize(
-                data[file_name].cell_mat, normalize_method, mz=self.ref_mz
-            )
+        filelist = self.get_filelist(file_name)
+        for name in filelist:
+            data[name].cell_mat = normalize(data[name].cell_mat, normalize_method, mz=self.ref_mz)
 
     def fill(self,
              data: dict[str, SCData],
-             file_name: str | None = None,
+             file_name: str | list[str] | None = None,
              fillna_method: str = "knn"
              ):
         self.logger.info(f"Fill NaN by {fillna_method}.")
-        if file_name is None:
-            for ms_data in data.values():
-                ms_data.cell_mat = fill_mat(ms_data.cell_mat, fillna_method)
-        else:
-            data[file_name].cell_mat = fill_mat(
-                data[file_name].cell_mat, fillna_method
-            )
+        filelist = self.get_filelist(file_name)
+        for name in filelist:
+            data[name].cell_mat = fill_mat(data[name].cell_mat, fillna_method)
 
-    def combat(self, data: dict[str, SCData], tag_list: list[str], file_name: str | None = None):
-        data = combat_batch_correction(data, tag_list)
-        return data
+    # def combat(self, data: dict[str, SCData], tag_list: list[str], file_name: str | list[str] | None = None):
+    #     data = combat_batch_correction(data, tag_list)
+    #     return data
 
-    def info(self, file_name: str | None = None):
+    def info(self, file_name: str | list[str] | None = None):
         """
         Print the information of the MSProcess
         Args:
             file_name: File name, if None, all files' info will be printed.
         """
-        if file_name is None:
-            for ms_data in self.data.values():
-                self.logger.info(
-                    " ".join(
-                        [
-                            f"File name: {ms_data.name}",
-                            f"Cells count: {ms_data.cell_count}",
-                            f"Peaks count: {ms_data.cell_mat.shape[1]}",
-                        ]
-                    )
-                )
-        else:
-            ms_data = self.data[file_name]
+        filelist = self.get_filelist(file_name)
+        for name in filelist:
+            ms_data = self.data[name]
             self.logger.info(
-                " ".join(
-                    [
-                        f"File name: {ms_data.name}",
-                        f"Cells count: {ms_data.cell_count}",
-                        f"Peaks count: {ms_data.cell_mat.shape[1]}",
-                    ]
-                )
+                " ".join([
+                    f"File name: {ms_data.name}",
+                    f"Cells count: {ms_data.cell_count}",
+                    f"Peaks count: {ms_data.cell_mat.shape[1]}",
+                ])
             )
             
     def show(self):
         pass
 
-    def clear_memory(self, file_name: str | None = None, attributes:list[str] | None = None):
+    def get_filelist(self, filename: str | list[str] | None = None) -> list[str]:
+        """
+        Normalize filename input to a list of file names.
+        Args:
+            filename: A single file name (str), a list of file names (list[str]) or None.
+        Returns:
+            list[str]: List of file names. If filename is None, returns list(self.data.keys()).
+        Raises:
+            ValueError: If a provided filename (or items in the list) is not present in self.data.
+        """
+        # If None, return all keys
+        if filename is None:
+            return list(self.data.keys())
+
+        # If a single string provided, wrap in list
+        if isinstance(filename, str):
+            filelist = [filename]
+        elif isinstance(filename, (list, tuple)):
+            # Ensure items are strings
+            filelist = [str(x) for x in filename]
+        else:
+            raise TypeError("filename must be str, list[str], tuple[str], or None")
+
+        # Validate that provided file names exist in self.data
+        missing = [name for name in filelist if name not in self.data]
+        if missing:
+            raise ValueError(f"File(s) not found in data: {missing}")
+
+        return filelist
+
+    def clear_memory(self, file_name: str | list[str] | None = None, attributes:list[str] | None = None):
         """
         Clear the memory of the MSProcess
         Args:
@@ -409,11 +369,9 @@ class Process:
                     self.logger.warning(f"Attribute '{attr}' does not exist in SCData and will be skipped.")
 
         self.logger.info(f"Clear attributes: {', '.join(attributes_to_clear)}")
-        if file_name is None:
-            for value in self.data.values():
-                value.clear(attributes=attributes_to_clear)
-        else:
-            self.data[file_name].clear(attributes=attributes_to_clear)
+        filelist = self.get_filelist(file_name)
+        for name in filelist:
+            self.data[name].clear(attributes=attributes_to_clear)
 
     def FormatConvert(
             self, 
@@ -466,7 +424,7 @@ class Process:
         outdf.to_csv(os.path.join(dir_path, f"{type}.csv"))
 
 
-    def save(self, file_name: str | None = None, suffix: str | None = None, attr: str = "cell_mat", path: str | None = None):
+    def save(self, file_name: str | list[str] | None = None, suffix: str | None = None, attr: str = "cell_mat", path: str | None = None):
         """
         Save the MSProcess
         Args:
@@ -483,26 +441,12 @@ class Process:
 
         if attr not in ["cell_mat", "mat", "process", "raw"]:
             raise ValueError("Data type not supported.")
-        if suffix is not None:
-            if file_name is None:
-                for ms_data in self.data.values():
-                    ms_data.__getattribute__(attr).to_csv(
-                        os.path.join(dir_path, f"{ms_data.name}_{attr}.csv")
-                    )
-            else:
-                self.data[file_name].__getattribute__(attr).to_csv(
-                    os.path.join(dir_path, f"{file_name}_{attr}.csv")
-                )
-        else:
-            if file_name is None:
-                for ms_data in self.data.values():
-                    ms_data.__getattribute__(attr).to_csv(
-                        os.path.join(dir_path, f"{ms_data.name}.csv")
-                    )
-            else:
-                self.data[file_name].__getattribute__(attr).to_csv(
-                    os.path.join(dir_path, f"{file_name}.csv")
-                )
+        
+        filelist = self.get_filelist(file_name)
+        for name in filelist:
+            self.data[name].__getattribute__(attr).to_csv(
+                os.path.join(dir_path, f"{name}.csv" if suffix is None else f"{name}_{suffix}.csv")
+            )
 
     @use_default_param(["res_mz", "count"])
     def pre_process(

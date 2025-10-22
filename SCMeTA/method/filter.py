@@ -1,27 +1,8 @@
-import numpy as np
 import pandas as pd
 from collections import defaultdict
 
-def sum_df(df: pd.DataFrame, scan: int) -> pd.DataFrame:
-    df = df.groupby("Mass").sum().reset_index()
-    df.insert(0, "Scan", scan)
-    df = df.set_index("Scan")
-    return df
-
-def peaks_combine(_raw: pd.DataFrame, res_mz: float = 0.01) -> pd.DataFrame:
-    # round mass to given resolution
-    # _raw["Mass"] = np.around(_raw["Mass"], decimals=np.log10(1 / resolution))
-    # to be consistent with the original code, we use floor, as 'around' does not solve the issue of combining peaks
-    _raw["Mass"] = np.floor(_raw["Mass"] / res_mz) * res_mz
-
-
-    # combine peaks with the same mass
-    scans = _raw.index.unique()
-    temp = [sum_df(_raw.loc[[scan]], scan) for scan in scans]  # 注意双括号
-    return pd.concat(temp)
-
 def filter_occ(
-    raw: pd.DataFrame, res_mz: float = 0.01, count: int = 10
+    raw: pd.DataFrame, count: int = 10
 ) -> pd.DataFrame:
     """
     Filter out peaks that occur less than count times in the data.
@@ -30,13 +11,11 @@ def filter_occ(
     :param count: Minimum number of occurrences.
     :return: List of filtered peaks.
     """
-    # do peaks combine
-    process = peaks_combine(raw, res_mz)
     # extract unique peak list
-    peaks = process["Mass"].value_counts()
+    peaks = raw["Mass"].value_counts()
     # filter peaks occur less than count times
     peaks = peaks[peaks >= count]
-    process = process[process["Mass"].isin(peaks.index)]
+    process = raw[raw["Mass"].isin(peaks.index)]
     return process
 
 def filter_mat(mat_list: list[pd.DataFrame], threshold: float = 0.2, lock: bool = False, method: str = "all",

@@ -144,28 +144,37 @@ class Process:
                     FUNC[type](ranges=ranges)
                 self.logger.info(f"{type} ranges {ranges} for {file_list}.")
 
-    @use_default_param(["count", "res_mz"])
+    @use_default_param(["res_mz"])
+    def round_mz(self, res_mz: float):
+        """
+        Round the mz to the specified resolution and combine the peaks
+        Args:
+            res_mz: Resolution of the mz, default 0.01
+        """
+        self.logger.info(f"Combine mz rounded to res_mz: {res_mz}.")
+        for ms_data in self.data.values():
+            ms_data.raw = combine_peaks(ms_data.raw, res_mz)
+
+    @use_default_param(["count"])
     def filter_occ(
         self,
         count: int,
-        res_mz: float,
         file_name: str | None = None,
     ):
         """
         Filter out the data with low occurrence
         Args:
             count: Minimum occurrence of the data, default 10
-            res_mz: Resolution of the mz, default 0.01
             file_name: File name, if None, all files will be processed.
         """
-        self.logger.info(f"Combine mz rounded to res_mz: {res_mz}, Filter mz occurred < count: {count}.")
+        self.logger.info(f"Filter mz occurred < count: {count}.")
         if file_name is None:
             # self.__mp.run(self.data, _filter_occ, resolution, count)
             for ms_data in self.data.values():
-                ms_data.process = filter_occ(ms_data.raw.copy(), res_mz, count)
+                ms_data.process = filter_occ(ms_data.raw.copy(), count)
         else:
             self.data[file_name].process = filter_occ(
-                self.data[file_name].raw.copy(), res_mz, count
+                self.data[file_name].raw.copy(), count
             )
 
     @use_default_param(["min_intens"])
@@ -517,7 +526,8 @@ class Process:
         """
         self.logger.info("Pre-process begin.")
         self.cut_offset(file_name=file_name, ranges=ranges, offset=offset, type=type)
-        self.filter_occ(res_mz=res_mz, count=count)
+        self.round_mz(res_mz=res_mz)
+        self.filter_occ(count=count)
         if clear_mem:
             self.clear_memory(attributes=["raw"])
 

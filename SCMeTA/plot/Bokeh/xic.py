@@ -5,11 +5,14 @@ from bokeh.models import RangeTool
 from bokeh.plotting import figure, output_notebook, show
 from bokeh.io import push_notebook
 
-def show_eic(process: pd.DataFrame, refer_mz: float=760.58, output: str="notebook"):
-    xic = pd.DataFrame({
-        "Scan": process.index,
-        "Intensity": process[refer_mz]
-    })
+def show_xic(df: pd.DataFrame, refer_mz: float=760.58, attr: str="raw", output: str="notebook"):
+    if attr == "raw":
+        xic = df[df['Mass'] == refer_mz]
+    else:
+        xic = pd.DataFrame({
+            "Scan": df.index,
+            "Intensity": df[refer_mz]
+        })
     start = xic.index.min()
     end = xic.index.max()
     p = figure(

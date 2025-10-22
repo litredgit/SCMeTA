@@ -105,7 +105,8 @@ class Process:
     def cut_offset(self,
                    file_name: str | list[str]| None = None,
                    offset: float | None = None,
-                   ranges: list[list[int, int]] | list[int, int] | None = None
+                   ranges: list[list[int, int]] | list[int, int] | None = None,
+                   type: str = "cut"
                    ):
         """
         Cut and offset the data
@@ -113,6 +114,7 @@ class Process:
             file_name: File name list, if None, all files will be processed.
             offset: Offset of the data, if None, it will ignore the offset step.
             ranges: Cut range of the data, if None, it will ignore the cut step.
+            type: Type of cut, "cut" or "drop", default "cut".
         """
         if offset is None and ranges is None:
             self.logger.info("No offset or cut range.")
@@ -135,9 +137,13 @@ class Process:
                     self.data[file].set_offset(offset=offset)
                 self.logger.info(f"Offset {offset} for {file_list}.")
             if ranges is not None:
+                FUNC = {
+                    "cut": self.data[file].cut,
+                    "drop": self.data[file].drop
+                }
                 for file in file_list:
-                    self.data[file].cut(ranges=ranges)
-                self.logger.info(f"Cut ranges {ranges} for {file_list}.")
+                    FUNC[type](ranges=ranges)
+                self.logger.info(f"{type} ranges {ranges} for {file_list}.")
 
     @use_default_param(["count", "res_mz"])
     def filter_occ(
@@ -514,6 +520,7 @@ class Process:
         file_name: str | list[str] | None = None,
         offset: float | None = None,
         ranges: list[list[int, int]] | list[int, int] | None = None,
+        type: str = "cut",
         clear_mem: bool = False
         ):
         """
@@ -525,12 +532,13 @@ class Process:
             file_name: File name
             offset: Offset of the data, if None, it will ignore the offset step.
             ranges: Cut range of the data, if None, it will ignore the cut step.
+            type: Type of cut, "cut" or "drop", default "cut".
             clear_mem: If True, clear the SCData.raw after pre_process, default False.
         Returns:
 
         """
         self.logger.info("Pre-process begin.")
-        self.cut_offset(file_name=file_name, ranges=ranges, offset=offset)
+        self.cut_offset(file_name=file_name, ranges=ranges, offset=offset, type=type)
         self.filter_occ(res_mz=res_mz, count=count)
         if clear_mem:
             self.clear_memory(attributes=["raw"])

@@ -40,9 +40,16 @@ class SCData:
             ranges = [ranges]
         intervals = [(s, e) for s, e in ranges]
         slices = [self.raw.loc[s:e] for s, e in intervals]
-        self.raw = pd.concat(slices, axis=0).reset_index(drop=True)
-        self.raw.index = range(1, len(self.raw) + 1)
-        self.raw.index.name = "Scan"
+        self.raw = pd.concat(slices, axis=0)
+
+    def drop(self, ranges: list[list[int, int]] | list[int, int]):
+        if isinstance(ranges[0], int):
+            ranges = [ranges]
+        intervals = [(s, e) for s, e in ranges]
+        to_drop = []
+        for s, e in intervals:
+            to_drop.extend(range(s, e + 1))
+        self.raw = self.raw.drop(index=to_drop)
 
     def xic(self, mz: float):
         return self.process.loc[self.process["Mass"] == mz]

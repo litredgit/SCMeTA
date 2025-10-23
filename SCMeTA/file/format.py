@@ -55,13 +55,13 @@ class SCData:
     def xic(self, mz: float):
         return self.process.loc[self.process["Mass"] == mz]
 
-    def show(self, type="xic", attr="raw", refer_mz: float=760.58, output: str="notebook"):
+    def show(self, type="xic", attr="raw", refer_mz: float=760.58, output: str="notebook", tol: float | None = None):
         FUNC = {
             "xic": show_xic
             # "tic": show_tic,
             # "bpc": show_bpc
         }
-        FUNC[type](self.raw, refer_mz, attr, output)
+        FUNC[type](self.raw, refer_mz, attr, output, tol)
 
     def get_scan(self, scan: int, data_type: str = "raw"):
         if data_type == "raw":

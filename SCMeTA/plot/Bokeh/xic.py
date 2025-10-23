@@ -5,16 +5,45 @@ from bokeh.models import RangeTool
 from bokeh.plotting import figure, output_notebook, show
 from bokeh.io import push_notebook
 
-def show_xic(df: pd.DataFrame, refer_mz: float=760.58, attr: str="raw", output: str="notebook"):
+
+def show_xic(
+    df: pd.DataFrame,
+    refer_mz: float = 760.58,
+    attr: str = "raw",
+    output: str = "notebook",
+    tol: float | None = None,
+):
     if attr == "raw":
-        xic = df[df['Mass'] == refer_mz]
+        if tol is None:
+            xic = df[df["Mass"] == refer_mz]
+        else:
+            lower, upper = refer_mz - tol, refer_mz + tol
+            xic = df[(df["Mass"] >= lower) & (df["Mass"] <= upper)]
     else:
-        xic = pd.DataFrame({
-            "Scan": df.index,
-            "Intensity": df[refer_mz]
-        })
-    start = xic.index.min()
-    end = xic.index.max()
+        # pivoted matrix: index is scan, columns are m/z values (float). When tol provided,
+        # sum all columns within the window; otherwise use exact column.
+        if tol is None:
+            intensity = df[refer_mz]
+        else:
+            cols = [
+                c
+                for c in df.columns
+                if isinstance(c, (int, float)) and abs(float(c) - refer_mz) <= tol
+            ]
+            if cols:
+                intensity = df[cols].sum(axis=1)
+            else:
+                # no column within tolerance; create zeros to keep shape
+                intensity = pd.Series(0, index=df.index, name="Intensity")
+        xic = pd.DataFrame({"Scan": df.index, "Intensity": intensity})
+
+    # Ensure sorted by scan and compute x range based on Scan values
+    if not xic.empty:
+        x_start = xic.index.min()
+        x_end = xic.index.max()
+    else:
+        x_start, x_end = 0, 1
+
     p = figure(
         title=f"EIC {refer_mz}",
         height=300,
@@ -24,7 +53,7 @@ def show_xic(df: pd.DataFrame, refer_mz: float=760.58, attr: str="raw", output: 
         x_axis_type="auto",
         x_axis_location="above",
         background_fill_color="#efefef",
-        x_range=(start, end),
+        x_range=(x_start, x_end),
     )
     p.line("Scan", "Intensity", source=xic)
     p.xaxis.axis_label = "Scan"

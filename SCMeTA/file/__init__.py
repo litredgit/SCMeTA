@@ -2,9 +2,11 @@ import os
 
 from SCMeTA.accelerate import MultiProcessing
 from SCMeTA.accelerate import MultiThreader
-from RawFileReader.RawFileExacter import RawFileReader
 
-from .thermo import load_thermo_data
+try:
+    from .thermo import load_thermo_data
+except ImportError as e:
+    print(f"Warning: Thermo RawFileReader import failed: {e}")
 from .process import load_process_data
 from .mzML import load_mzML_data
 from .format import *

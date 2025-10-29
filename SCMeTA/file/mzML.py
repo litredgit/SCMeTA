@@ -12,7 +12,7 @@ def _parse_mzml(file_path: str, load_range: tuple[int, int] | None=None) -> pd.D
     run = pymzml.run.Reader(
         file_path,
         obo_version="4.1.33",  # 使用最新OBO定义加速
-        build_index_from_scratch=True,  # 禁用耗时索引
+        build_index_from_scratch=False,  # 禁用耗时索引
         MS_precisions={1: 5e-6, 2: 20e-6}  # 设置精度减少计算
     )
     total_scans = run.get_spectrum_count()
@@ -21,9 +21,6 @@ def _parse_mzml(file_path: str, load_range: tuple[int, int] | None=None) -> pd.D
 
     # 预分配内存（减少动态扩容开销）
     scan_nums, masses, intensities = [], [], []
-    scan_nums_append = scan_nums.append
-    masses_append = masses.append
-    intensities_append = intensities.append
     file_name = os.path.splitext(os.path.basename(file_path))[0]
 
     for scan_num in trange(load_range[0], load_range[1]+1, desc=f"Parsing {file_name}"):
@@ -32,9 +29,9 @@ def _parse_mzml(file_path: str, load_range: tuple[int, int] | None=None) -> pd.D
         i_array = np.around(spec.i, decimals=3)
 
         # 批量追加（比逐点循环快10倍）
-        scan_nums_append(np.full(len(mz_array), scan_num))
-        masses_append(mz_array)
-        intensities_append(i_array)
+        scan_nums.append(np.full(len(mz_array), scan_num))
+        masses.append(mz_array)
+        intensities.append(i_array)
 
     # 向量化合并（避免逐行构建DataFrame）
     return pd.DataFrame({

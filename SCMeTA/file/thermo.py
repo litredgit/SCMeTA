@@ -2,7 +2,7 @@ import pandas as pd
 from scipy.signal import find_peaks
 
 from .format import SCData
-from . import RawFileReader
+from RawFileReader.src import RawFileReader
 
 
 def load_txt(path):

@@ -7,13 +7,14 @@ from bokeh.io import push_notebook
 
 
 def show_xic(
+    name: str,
     df: pd.DataFrame,
     refer_mz: float = 760.58,
     attr: str = "raw",
     output: str = "notebook",
     tol: float | None = None,
 ):
-    if attr == "raw":
+    if attr == "raw" or attr == "process":
         if tol is None:
             xic = df[df["Mass"] == refer_mz]
         else:
@@ -35,7 +36,9 @@ def show_xic(
             else:
                 # no column within tolerance; create zeros to keep shape
                 intensity = pd.Series(0, index=df.index, name="Intensity")
-        xic = pd.DataFrame({"Scan": df.index, "Intensity": intensity})
+        xic = intensity.to_frame().set_index(df.index)
+        xic.index.name = "Scan"
+        xic.columns = ["Intensity"]
 
     # Ensure sorted by scan and compute x range based on Scan values
     if not xic.empty:
@@ -45,7 +48,7 @@ def show_xic(
         x_start, x_end = 0, 1
 
     p = figure(
-        title=f"EIC {refer_mz}",
+        title=f"EIC {refer_mz} of {name}",
         height=300,
         width=800,
         tools="hover,pan,wheel_zoom,box_zoom,reset,save",

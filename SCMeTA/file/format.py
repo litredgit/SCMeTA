@@ -61,7 +61,7 @@ class SCData:
             # "tic": show_tic,
             # "bpc": show_bpc
         }
-        FUNC[type](self.raw, refer_mz, attr, output, tol)
+        FUNC[type](self.name, self.__getattribute__(attr), refer_mz, attr, output, tol)
 
     def get_scan(self, scan: int, data_type: str = "raw"):
         if data_type == "raw":

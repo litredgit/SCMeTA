@@ -319,8 +319,10 @@ class Process:
                 ])
             )
             
-    def show(self):
-        pass
+    def show(self, file_name: str | list[str] | None = None, type="xic", attr="raw", refer_mz: float=760.58, output: str="notebook", tol: float | None = None):
+        filelist = self.get_filelist(file_name)
+        for name in filelist:
+            self.data[name].show(type=type, attr=attr, refer_mz=refer_mz, output=output, tol=tol)
 
     def get_filelist(self, filename: str | list[str] | None = None) -> list[str]:
         """

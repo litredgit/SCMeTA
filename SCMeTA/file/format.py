@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from SCMeTA.plot import show_xic
+from SCMeTA.plot import show_xic, show_tic, show_bpc
 import pandas as pd
 
 @dataclass
@@ -57,11 +57,18 @@ class SCData:
 
     def show(self, type="xic", attr="raw", refer_mz: float=760.58, output: str="notebook", tol: float | None = None):
         FUNC = {
-            "xic": show_xic
-            # "tic": show_tic,
-            # "bpc": show_bpc
+            "xic": show_xic,
+            "tic": show_tic,
+            "bpc": show_bpc
         }
-        FUNC[type](self.name, self.__getattribute__(attr), refer_mz, attr, output, tol)
+        FUNC[type](
+            name=self.name, 
+            df=self.__getattribute__(attr), 
+            refer_mz=refer_mz, 
+            attr=attr, 
+            output=output, 
+            tol=tol
+        )
 
     def get_scan(self, scan: int, data_type: str = "raw"):
         if data_type == "raw":

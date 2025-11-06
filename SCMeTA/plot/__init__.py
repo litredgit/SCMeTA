@@ -1,1 +1,1 @@
-from .Bokeh import show_xic, heatmap
+from .Bokeh import show_xic, show_tic, show_bpc, heatmap

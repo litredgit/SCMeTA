@@ -55,28 +55,28 @@ class Process:
         self,
         path: str,
         log_file: str = '',
-        data_type: str = "thermo",
+        data_type: str = "auto",
         target_attr: str = "raw",
         load_range: tuple[int, int] | None = None,
-        method: str = "MultiThread"
+        method: str = "mt"
     ):
         """
         Add a file to the MSProcess
         Args:
-            path: File path or directory path.
-            data_type: Data type, support:
-                "thermo": [".raw", ".txt"],
-                "process": [".csv"],
-                "mzML": [".mzML", ".mzml"].
-            target_attr: Attribute to load the data, default "raw", other attributes in SCData is also supported.
-            method: Method to load the data, default "MultiThread", can be "one by one", "MultiProcess".
+            path: File path to load.
+            log_file: Log file path.
+            data_type: Data type, default "auto". Options are "auto", "thermo", "process", "waters", "mzML", "database".
+            target_attr: Attribute to load the data, default "raw".
+            load_range: Range of data to load, default None.
+            method: Method to load the data, default "mt". Options are "seq", "mt", "mp".
+        Caution: Only one type of file is supported in parallel mode. That is, when data_type==auto, method must be seq.
         """
         # set up logger
         if log_file == 'data':
             log_file=os.path.dirname(path) + "/scmeta.log"
         self.logger = setup_logger(log_file=log_file)
         # check data_type
-        if data_type not in ["thermo", "process", "waters", "mzML", "database"]:
+        if data_type not in ["auto", "thermo", "process", "waters", "mzML", "database"]:
             raise ValueError("Data type not supported.")
         if target_attr not in ["cell_mat", "mat", "process", "raw"]:
             target_attr = "raw"

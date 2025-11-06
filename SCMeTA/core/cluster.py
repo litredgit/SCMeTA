@@ -110,7 +110,6 @@ class Process:
             type: "cut" to keep ranges, "drop" to remove ranges.
         """
         if ranges is None:
-            self.logger.info("No cut ranges provided.")
             return
 
         filelist = self.get_filelist(file_name)
@@ -131,7 +130,6 @@ class Process:
             offset: Offset value to apply. If None, nothing will be done.
         """
         if offset is None:
-            self.logger.info("No offset provided.")
             return
 
         filelist = self.get_filelist(file_name)
@@ -196,8 +194,6 @@ class Process:
             filelist = self.get_filelist(file_name)
             for name in filelist:
                 self.data[name].mat = combine_peaks(self.data[name].mat, mz_interval=mz_interval)
-        else:
-            self.logger.info(f"mz_interval <= 0, skip combine peaks step.")
 
     @use_default_param(["max_ratio"])
     def denoise(self, max_ratio: float, file_name: str | list[str] | None = None):
@@ -267,7 +263,7 @@ class Process:
             lock_mz: If True, the mz you select in lock mz file will be locked, default False.
             method: Method to filter the data, default "all", can be "all", "any", "none".
         """
-        self.logger.info(f"Filter mz occurred > threshold: {threshold} * cell_count with lock_mz {lock_mz}.")
+        self.logger.info(f"Filter mz with lock_mz." if lock_mz else f"Filter mz occurred > threshold: {threshold} * cell_count.")
         if lock_mz and (self.INCLUDE_LIST is None or self.EXCLUDE_LIST is None):
             raise ValueError("INCLUDE_LIST or EXCLUDE_LIST is None, cannot lock m/z.")
         name_list = self.get_filelist(file_name)
@@ -311,7 +307,7 @@ class Process:
         filelist = self.get_filelist(file_name)
         for name in filelist:
             ms_data = self.data[name]
-            self.logger.info(
+            self.logger.warning(
                 " ".join([
                     f"File name: {ms_data.name}",
                     f"Cells count: {ms_data.cell_count}",
@@ -475,7 +471,7 @@ class Process:
         Returns:
 
         """
-        self.logger.info("Pre-process begin.")
+        self.logger.warning("Pre-process begin.")
         self.cut(file_name=file_name, ranges=ranges, type=type)
         self.offset(file_name=file_name, offset=offset)
         self.round_mz(res_mz=res_mz)
@@ -518,7 +514,7 @@ class Process:
             filter_method: Method of filtering
             clear_mem: If True, clear the SCData.process and SCData.mat after process, default False(clear mat).
         """
-        self.logger.info("Process begin.")
+        self.logger.warning("Process begin.")
         self.gen_mat(min_intens=min_intens)
         if clear_mem:
             self.clear_memory(attributes=["process"])
@@ -547,7 +543,7 @@ class Process:
         Returns:
             Dict of MSData
         """
-        self.logger.info("Post process begin.")
+        self.logger.warning("Post process begin.")
         if normalize_method is None:
             normalize_method = ["mz"]
         if data is None:

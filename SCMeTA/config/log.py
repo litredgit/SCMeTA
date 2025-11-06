@@ -2,6 +2,29 @@ import logging
 import os
 from pathlib import Path
 
+class ColorFormatter(logging.Formatter):
+    """
+    Colorizes level names based on log level for console output only.
+    """
+    COLORS = {
+        logging.DEBUG: "\033[36m",     # Cyan
+        logging.INFO: "\033[32m",      # Green
+        logging.WARNING: "\033[33m",   # Yellow
+        logging.ERROR: "\033[31m",     # Red
+        logging.CRITICAL: "\033[1;31m" # Bold Red
+    }
+    RESET = "\033[0m"
+
+    def format(self, record: logging.LogRecord) -> str:
+        original_levelname = record.levelname
+        color = self.COLORS.get(record.levelno, self.RESET)
+        record.levelname = f"{color}{original_levelname}{self.RESET}"
+        try:
+            return super().format(record)
+        finally:
+            # Restore original to avoid leaking ANSI codes to other handlers
+            record.levelname = original_levelname
+
 def setup_logger(name = __name__, log_file : str = '', level=logging.INFO):
     """
     Set up a logger that outputs to both console and file
@@ -41,23 +64,26 @@ def setup_logger(name = __name__, log_file : str = '', level=logging.INFO):
     if logger.handlers:
         return logger
     
-    # Define log format: timestamp - logger name - level - message
-    formatter = logging.Formatter(
-    fmt="[%(asctime)s][\033[32m%(levelname)s\033[0m] %(message)s",
-    datefmt="%Y.%m.%d %H:%M"
-)
-    formatter.converter = lambda *args: __import__('time').localtime(*args)
-    # File handler (without rotation)
+    # Define log format (uncolored). We'll colorize via ColorFormatter only for console.
+    fmt = "[%(asctime)s][%(levelname)s] %(message)s"
+    # Local time converter
+    _to_localtime = lambda *args: __import__('time').localtime(*args)
+
+    # File handler (without rotation) - no ANSI colors in files
     if log_file != '':
         file_handler = logging.FileHandler(log_file, encoding='utf-8')
-        file_handler.setFormatter(formatter)
+        file_formatter = logging.Formatter(fmt=fmt, datefmt="%Y.%m.%d %H:%M")
+        file_formatter.converter = _to_localtime
+        file_handler.setFormatter(file_formatter)
         logger.addHandler(file_handler)
     
     # Console handler
     console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
+    console_formatter = ColorFormatter(fmt=fmt, datefmt="%Y.%m.%d %H:%M")
+    console_formatter.converter = _to_localtime
+    console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
-    logger.info(f"Save log in {log_file}.")
-
+    if log_file != '':
+        logger.info(f"Save log in {log_file}.")
     return logger
     

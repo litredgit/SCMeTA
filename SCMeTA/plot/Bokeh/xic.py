@@ -1,7 +1,7 @@
 import pandas as pd
 
 from bokeh.layouts import column
-from bokeh.models import RangeTool
+from bokeh.models import RangeTool, WheelZoomTool, PanTool, BoxZoomTool, HoverTool, BasicTickFormatter, Button, CustomJS
 from bokeh.plotting import figure, output_notebook, show
 
 def show_xic(
@@ -46,16 +46,51 @@ def show_xic(
         x_start, x_end = 0, 1
 
     p = figure(
-        title=f"EIC {refer_mz} of {name}",
+        title=f"XIC {refer_mz} of {name}",
         height=300,
-        width=800,
-        tools="hover,pan,wheel_zoom,box_zoom,reset,save",
+        width=450,
+        tools="reset,save",
         toolbar_location="right",
         x_axis_type="auto",
-        x_axis_location="above",
+        x_axis_location="below",
         background_fill_color="#efefef",
-        x_range=(x_start, x_end),
+        x_range=(x_start, x_end)
     )
+    p.yaxis[0].formatter = BasicTickFormatter(precision=1)
+    p.y_range.start = 0
+
+    xwheel = WheelZoomTool(dimensions="width")
+    xpan = PanTool(dimensions="width")
+    xbox = BoxZoomTool(dimensions="width")
+    hover = HoverTool(
+    tooltips=[
+        ("Scan", "@Scan"),
+        ("Intensity", "@Intensity"),
+    ],
+    mode="vline",
+    line_policy="nearest",
+    name="hover_main"
+)
+    button = Button(label="Switch Hover Mode", width=150)
+
+    callback = CustomJS(args=dict(hover=hover, button=button), code="""
+        if (hover.mode === "vline") {
+            hover.mode = "mouse";
+            hover.line_policy = "none";
+            button.label = "Switch Hover Mode (mouse)";
+        } else {
+            hover.mode = "vline";
+            hover.line_policy = "nearest";
+            button.label = "Switch Hover Mode (vline)";
+        }
+    """)
+
+    button.js_on_click(callback)
+
+    p.add_tools(xwheel, xpan, xbox, hover)
+    p.toolbar.active_scroll = xwheel
+    p.toolbar.active_drag = xpan
+
     p.line("Scan", "Intensity", source=xic)
     p.xaxis.axis_label = "Scan"
     p.yaxis.axis_label = "Intensity"
@@ -82,7 +117,7 @@ def show_xic(
 
     if output == "notebook":
         output_notebook()
-    show(column(p))
+    show(column(p, button))
 
 
 def show_tic(

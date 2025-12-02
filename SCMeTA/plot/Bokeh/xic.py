@@ -11,6 +11,7 @@ def show_xic(
     attr: str = "raw",
     output: str = "notebook",
     tol: float | None = None,
+    **kwargs
 ):
     if attr == "raw" or attr == "process":
         if tol is None:
@@ -169,11 +170,11 @@ def show_tic(
     p = figure(
         title=f"TIC of {name}",
         height=300,
-        width=800,
+        width=450,
         tools="hover,pan,wheel_zoom,box_zoom,reset,save",
         toolbar_location="right",
         x_axis_type="auto",
-        x_axis_location="above",
+        x_axis_location="below",
         background_fill_color="#efefef",
         x_range=(x_start, x_end),
     )
@@ -232,11 +233,11 @@ def show_bpc(
     p = figure(
         title=f"BPC of {name}",
         height=300,
-        width=800,
+        width=450,
         tools="hover,pan,wheel_zoom,box_zoom,reset,save",
         toolbar_location="right",
         x_axis_type="auto",
-        x_axis_location="above",
+        x_axis_location="below",
         background_fill_color="#efefef",
         x_range=(x_start, x_end),
     )

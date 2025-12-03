@@ -76,7 +76,7 @@ class Process:
             log_file=os.path.dirname(path) + "/scmeta.log"
         self.logger = setup_logger(log_file=log_file)
         # check data_type
-        if data_type not in ["auto", "thermo", "process", "waters", "mzML", "database"]:
+        if data_type not in ["auto", "thermo", "process", "mzml"]:
             raise ValueError("Data type not supported.")
         if target_attr not in ["cell_mat", "mat", "process", "raw"]:
             target_attr = "raw"

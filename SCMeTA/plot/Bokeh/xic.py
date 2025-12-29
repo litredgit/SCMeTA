@@ -43,6 +43,7 @@ def show_xic(
     if not xic.empty:
         x_start = xic.index.min()
         x_end = xic.index.max()
+        # xic.index = xic.index.astype(float) / 20
     else:
         x_start, x_end = 0, 1
 
@@ -59,6 +60,10 @@ def show_xic(
     )
     p.yaxis[0].formatter = BasicTickFormatter(precision=1)
     p.y_range.start = 0
+    p.xgrid.grid_line_color = None
+    p.ygrid.grid_line_color = None
+    p.background_fill_color = "white"
+    p.border_fill_color = "white"
 
     xwheel = WheelZoomTool(dimensions="width")
     xpan = PanTool(dimensions="width")
@@ -92,7 +97,7 @@ def show_xic(
     p.toolbar.active_scroll = xwheel
     p.toolbar.active_drag = xpan
 
-    p.line("Scan", "Intensity", source=xic)
+    p.line("Scan", "Intensity", source=xic, line_color="black")
     p.xaxis.axis_label = "Scan"
     p.yaxis.axis_label = "Intensity"
 
@@ -181,6 +186,10 @@ def show_tic(
     p.line("Scan", "Intensity", source=tic)
     p.xaxis.axis_label = "Scan"
     p.yaxis.axis_label = "Intensity"
+    p.xgrid.grid_line_color = None
+    p.ygrid.grid_line_color = None
+    p.background_fill_color = "white"
+    p.border_fill_color = "white"
 
     if output == "notebook":
         output_notebook()

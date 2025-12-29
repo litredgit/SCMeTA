@@ -33,6 +33,10 @@ def show_spec(
     )
     p.yaxis[0].formatter = BasicTickFormatter(precision=1)
     p.y_range.start = 0
+    p.xgrid.grid_line_color = None
+    p.ygrid.grid_line_color = None
+    p.background_fill_color = "white"
+    p.border_fill_color = "white"
 
     xwheel = WheelZoomTool(dimensions="width")
     xpan = PanTool(dimensions="width")
@@ -66,7 +70,7 @@ def show_spec(
     p.toolbar.active_scroll = xwheel
     p.toolbar.active_drag = xpan
 
-    p.line("Mass", "Intensity", source=spec)
+    p.line("Mass", "Intensity", source=spec, line_color="black")
     p.xaxis.axis_label = "m/z"
     p.yaxis.axis_label = "Intensity"
 

@@ -1,8 +1,5 @@
 import pandas as pd
-
-from bokeh.layouts import column
-from bokeh.models import RangeTool, WheelZoomTool, PanTool, BoxZoomTool, HoverTool, BasicTickFormatter, Button, CustomJS
-from bokeh.plotting import figure, output_notebook, show
+from .line import line
 
 def show_xic(
     name: str,
@@ -13,6 +10,13 @@ def show_xic(
     tol: float | None = None,
     **kwargs
 ):
+    """Plot Extracted Ion Chromatogram.
+
+    Supports two shapes of input:
+    - raw/process table with columns including 'Scan' and 'Intensity'.
+    - pivoted matrix with scan index and m/z columns (floats/numbers).
+    """
+    # extract source data
     if attr == "raw" or attr == "process":
         if tol is None:
             xic = df[df["Mass"] == refer_mz]
@@ -38,93 +42,9 @@ def show_xic(
         xic = intensity.to_frame().set_index(df.index)
         xic.index.name = "Scan"
         xic.columns = ["Intensity"]
-
-    # Ensure sorted by scan and compute x range based on Scan values
-    if not xic.empty:
-        x_start = xic.index.min()
-        x_end = xic.index.max()
-        # xic.index = xic.index.astype(float) / 20
-    else:
-        x_start, x_end = 0, 1
-
-    p = figure(
-        title=f"XIC {refer_mz} of {name}",
-        height=300,
-        width=450,
-        tools="reset,save",
-        toolbar_location="right",
-        x_axis_type="auto",
-        x_axis_location="below",
-        background_fill_color="#efefef",
-        x_range=(x_start, x_end)
-    )
-    p.yaxis[0].formatter = BasicTickFormatter(precision=1)
-    p.y_range.start = 0
-    p.xgrid.grid_line_color = None
-    p.ygrid.grid_line_color = None
-    p.background_fill_color = "white"
-    p.border_fill_color = "white"
-
-    xwheel = WheelZoomTool(dimensions="width")
-    xpan = PanTool(dimensions="width")
-    xbox = BoxZoomTool(dimensions="width")
-    hover = HoverTool(
-    tooltips=[
-        ("Scan", "@Scan"),
-        ("Intensity", "@Intensity"),
-    ],
-    mode="vline",
-    line_policy="nearest",
-    name="hover_main"
-)
-    button = Button(label="Switch Hover Mode", width=150)
-
-    callback = CustomJS(args=dict(hover=hover, button=button), code="""
-        if (hover.mode === "vline") {
-            hover.mode = "mouse";
-            hover.line_policy = "none";
-            button.label = "Switch Hover Mode (mouse)";
-        } else {
-            hover.mode = "vline";
-            hover.line_policy = "nearest";
-            button.label = "Switch Hover Mode (vline)";
-        }
-    """)
-
-    button.js_on_click(callback)
-
-    p.add_tools(xwheel, xpan, xbox, hover)
-    p.toolbar.active_scroll = xwheel
-    p.toolbar.active_drag = xpan
-
-    p.line("Scan", "Intensity", source=xic, line_color="black")
-    p.xaxis.axis_label = "Scan"
-    p.yaxis.axis_label = "Intensity"
-
-    # select = figure(
-    #     title="Drag the middle and edges of the selection box to change the range above",
-    #     height=130,
-    #     width=800,
-    #     y_range=p.y_range,
-    #     x_axis_type="auto",
-    #     y_axis_type=None,
-    #     tools="",
-    #     toolbar_location="right",
-    #     background_fill_color="#efefef",
-    # )
-
-    # rt = RangeTool(x_range=p.x_range)
-    # rt.overlay.fill_color = "navy"
-    # rt.overlay.fill_alpha = 0.2
-
-    # select.line("Scan", "Intensity", source=xic)
-    # select.ygrid.grid_line_color = None
-    # select.add_tools(rt)
-
-    if output == "notebook":
-        output_notebook()
-    show(column(p, button))
-
+     
+    # plot line
+    line(df=xic, x="Scan", y="Intensity", title=f"EIC {refer_mz} of {name}", output=output)
 
 def show_tic(
     name: str,
@@ -165,35 +85,7 @@ def show_tic(
     tic = intensity.to_frame(name="Intensity")
     tic.index.name = "Scan"
 
-    # Determine x-range from scan index
-    if not tic.empty:
-        x_start = tic.index.min()
-        x_end = tic.index.max()
-    else:
-        x_start, x_end = 0, 1
-
-    p = figure(
-        title=f"TIC of {name}",
-        height=300,
-        width=450,
-        tools="hover,pan,wheel_zoom,box_zoom,reset,save",
-        toolbar_location="right",
-        x_axis_type="auto",
-        x_axis_location="below",
-        background_fill_color="#efefef",
-        x_range=(x_start, x_end),
-    )
-    p.line("Scan", "Intensity", source=tic)
-    p.xaxis.axis_label = "Scan"
-    p.yaxis.axis_label = "Intensity"
-    p.xgrid.grid_line_color = None
-    p.ygrid.grid_line_color = None
-    p.background_fill_color = "white"
-    p.border_fill_color = "white"
-
-    if output == "notebook":
-        output_notebook()
-    show(column(p))
+    line(df=tic, x="Scan", y="Intensity", title=f"TIC of {name}", output=output)
 
 
 def show_bpc(
@@ -233,27 +125,4 @@ def show_bpc(
     bpc = intensity.to_frame(name="Intensity")
     bpc.index.name = "Scan"
 
-    if not bpc.empty:
-        x_start = bpc.index.min()
-        x_end = bpc.index.max()
-    else:
-        x_start, x_end = 0, 1
-
-    p = figure(
-        title=f"BPC of {name}",
-        height=300,
-        width=450,
-        tools="hover,pan,wheel_zoom,box_zoom,reset,save",
-        toolbar_location="right",
-        x_axis_type="auto",
-        x_axis_location="below",
-        background_fill_color="#efefef",
-        x_range=(x_start, x_end),
-    )
-    p.line("Scan", "Intensity", source=bpc)
-    p.xaxis.axis_label = "Scan"
-    p.yaxis.axis_label = "Intensity"
-
-    if output == "notebook":
-        output_notebook()
-    show(column(p))
+    line(df=bpc, x="Scan", y="Intensity", title=f"BPC of {name}", output=output)

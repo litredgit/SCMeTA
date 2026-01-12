@@ -1,25 +1,10 @@
-import pandas as pd
-from bokeh.layouts import column
 from bokeh.models import WheelZoomTool, PanTool, BoxZoomTool, HoverTool, BasicTickFormatter, Button, CustomJS, ColumnDataSource
-from bokeh.plotting import figure, output_notebook, show
+from bokeh.plotting import figure
 
-def line(df: pd.DataFrame, x:str, y:str, title:str | None = None, output:str = "notebook"):
+def scatter_canvas(title:str):
     """
-    plot line.
+    plot scatter to identify cell events.
     """
-    # Ensure sorted by scan and compute x range based on Scan values
-    if not df.empty:
-        if x == df.index.name:
-            x_start = df.index.min()
-            x_end = df.index.max()
-        else:
-            x_start = df[x].min()
-            x_end = df[x].max()
-
-        # xic.index = xic.index.astype(float) / 20
-    else:
-        raise ValueError("input empty dataframe")
-    
     # initialize figure
     p = figure(
         title=title,
@@ -29,7 +14,6 @@ def line(df: pd.DataFrame, x:str, y:str, title:str | None = None, output:str = "
         toolbar_location="right",
         background_fill_color="white",
         border_fill_color="white",
-        x_range=(x_start, x_end)
     )
     p.yaxis[0].formatter = BasicTickFormatter(precision=1)
     p.y_range.start = 0
@@ -68,15 +52,4 @@ def line(df: pd.DataFrame, x:str, y:str, title:str | None = None, output:str = "
     p.toolbar.active_scroll = xwheel
     p.toolbar.active_drag = xpan
 
-    # plot line
-    source = ColumnDataSource({
-        "x": df.index.values if x == df.index.name else df[x].values,
-        "y": df[y].values
-    })
-    p.line("x", "y", source=source, line_color="black")
-    p.xaxis.axis_label = x
-    p.yaxis.axis_label = y
-
-    if output == "notebook":
-        output_notebook()
-    show(column(p, button))
+    return p, button

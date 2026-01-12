@@ -1,5 +1,7 @@
 import pandas as pd
+import numpy as np
 from .line import line
+from .scatter import scatter_canvas
 
 def show_xic(
     name: str,
@@ -45,6 +47,68 @@ def show_xic(
      
     # plot line
     line(df=xic, x="Scan", y="Intensity", title=f"EIC {refer_mz} of {name}", output=output)
+
+def show_cell_event(
+    name: str,
+    df: pd.DataFrame,
+    cell_pos: list,
+    refer_mz: float = 760.58,
+    output: str = "notebook",
+    **kwargs
+):
+    """Plot chromatogram highlighting cell events.
+
+    Args:
+        name (str): Name of the sample or file.
+        df (pd.DataFrame): DataFrame with 'Scan' index and m/z columns.
+        cell_pos (list): List of tuples indicating start and end scan of cell events.
+        refer_mz (float, optional): Reference m/z value. Defaults to 760.58.
+        output (str, optional): Output mode for Bokeh. Defaults to "notebook".
+    """
+    from bokeh.plotting import output_notebook, show
+    from bokeh.models import ColumnDataSource
+    from bokeh.layouts import column
+
+    # Extract cell event points
+    is_event = np.zeros(len(df), dtype=bool)
+    for start, end in cell_pos:
+        is_event[start:end + 1] = True
+    df_event = df[is_event]
+    df_other = df[~is_event]
+
+    # make source data
+    source_event = ColumnDataSource(data={
+        "x": df_event.index,
+        "y": df_event[refer_mz]
+    })
+    source_other = ColumnDataSource(data={
+        "x": df_other.index,
+        "y": df_other[refer_mz]
+    })
+
+    # plot scatter
+    p, hover_button = scatter_canvas(title=f"EIC scatter (m/z = {refer_mz}) of {name}")
+    p.scatter(
+        source=source_other,
+        x="x",
+        y="y",
+        size=4,
+        color="gray",
+        alpha=0.5,
+        legend_label="Other"
+    )
+    p.scatter(
+        source=source_event,
+        x="x",
+        y="y",
+        size=6,
+        color="red",
+        alpha=0.8,
+        legend_label="Cell Event"
+    )
+    if output == "notebook":
+        output_notebook()
+    show(column(p, hover_button))
 
 def show_tic(
     name: str,

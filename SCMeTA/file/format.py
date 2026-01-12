@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from SCMeTA.plot import show_xic, show_tic, show_bpc, show_spec
+from SCMeTA.plot import show_xic, show_cell_event, show_tic, show_bpc, show_spec
 import pandas as pd
 
 @dataclass
@@ -61,13 +61,15 @@ class SCData:
             "tic": show_tic,
             "bpc": show_bpc,
             "spec": show_spec,
+            "cell": show_cell_event
         }
         FUNC[type](
             name=self.name, 
-            df=self.__getattribute__(attr), 
+            df=self.__getattribute__(attr),
+            cell_pos=self.cell_pos if type == "cell" else None,
             refer_mz=refer_mz, 
-            scan=scan,
-            attr=attr, 
+            scan=scan if type == "spec" else None,
+            attr="mat" if type == "cell" else attr,
             output=output, 
             tol=tol
         )

@@ -29,8 +29,8 @@ def scatter_canvas(title:str):
         ("x", "@x"),
         ("y", "@y"),
     ],
-    mode="vline",
-    line_policy="nearest",
+    mode="mouse",
+    line_policy="none",
     name="hover_main"
 )
     # define switch button within hover mouse and vline

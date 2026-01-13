@@ -70,9 +70,11 @@ def show_cell_event(
     from bokeh.layouts import column
 
     # Extract cell event points
+    scan = df.index.to_numpy()
     is_event = np.zeros(len(df), dtype=bool)
+
     for start, end in cell_pos:
-        is_event[start:end + 1] = True
+        is_event |= (scan >= start) & (scan <= end)
     df_event = df[is_event]
     df_other = df[~is_event]
 
@@ -94,16 +96,16 @@ def show_cell_event(
         y="y",
         size=4,
         color="gray",
-        alpha=0.5,
+        alpha=0.35,
         legend_label="Other"
     )
     p.scatter(
         source=source_event,
         x="x",
         y="y",
-        size=6,
+        size=4,
         color="red",
-        alpha=0.8,
+        alpha=1.0,
         legend_label="Cell Event"
     )
     if output == "notebook":

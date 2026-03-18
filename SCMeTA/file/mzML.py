@@ -53,7 +53,7 @@ def _parse_mzml(file_path: str, load_range: tuple[int, int] | None=None) -> pd.D
             
             data_points_count = len(mzs)
             if data_points_count > 0:
-                scan_nums.append(np.full(data_points_count, i + 1))
+                scan_nums.append(np.full(data_points_count, i))
                 masses.append(mzs)
                 intensities.append(ints)
 

@@ -34,7 +34,7 @@ def load_thermo(path, load_range, include_ms2=False, filter_resolution: bool = T
             "Mass": np.concatenate(masses),
             "Intensity": np.concatenate(intensities),
             "Scan": np.concatenate(scan_nums)
-        })
+        }).set_index("Scan")
     except :
         print("Failed to load with RawFileReaderS, trying rolling back to RawFileReader...")
         from RawFileReader.src.RawFileReader import RawFileReader

@@ -75,7 +75,7 @@ def load_data(
             except Exception:
                 pass
     else:
-        files = check_path(path, do='r', type=suffix)
+        files = check_path(path, do='r', type=[suffix])
         readers.update({name: FUNC_DICT[suffix] for name in files.keys()})
 
     if method == "seq":

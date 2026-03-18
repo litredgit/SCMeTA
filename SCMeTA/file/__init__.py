@@ -43,7 +43,7 @@ def read_files_in_parallel(
 
 def load_data(
     path: str | dict,
-    data_type: str = "auto",
+    suffix: str = "auto",
     target_attr: str = "raw", 
     load_range: tuple[int, int] | None = None, 
     method: str = "mt"
@@ -52,6 +52,7 @@ def load_data(
     Load data from the given path or database. only support one type of file in parallel mode.
     Parameters:
         path (str | dict): The file path or a dictionary of file paths.
+        suffix (str): The suffix of the files to load ("auto", "raw", "csv", "mzml").
         target_attr (str): The target attribute to load data into.
         load_range (tuple[int, int] | None): The range of data to load.
         method (str): The method to use for loading data ("seq", "mt", "mp").
@@ -59,29 +60,23 @@ def load_data(
         dict[str, SCData]: A dictionary of loaded SCData objects.
     """
     FUNC_DICT = {
-        "thermo": load_thermo_data,
-        "process": load_process_data,
+        "raw": load_thermo_data,
+        "csv": load_process_data,
         "mzml":load_mzML_data
     }
 
-    SUFFIX_DICT = {
-        "thermo": ["raw", "txt"],
-        "process": ["csv"],
-        "mzml": ["mzml"]
-    }
-
     files, readers = {}, {}
-    if data_type == "auto":
-        for dtype in SUFFIX_DICT.keys():
+    if suffix == "auto":
+        for dtype in ["raw", "csv", "mzml"]:
             try:
-                files_dtype=check_path(path, do='r', type=[ext for ext in SUFFIX_DICT[dtype]])
+                files_dtype=check_path(path, do='r', type=[dtype])
                 files.update(files_dtype)
                 readers.update({name: FUNC_DICT[dtype] for name in files_dtype.keys()})
             except Exception:
                 pass
     else:
-        files = check_path(path, do='r', type=[ext for ext in SUFFIX_DICT[data_type]])
-        readers.update({name: FUNC_DICT[data_type] for name in files.keys()})
+        files = check_path(path, do='r', type=suffix)
+        readers.update({name: FUNC_DICT[suffix] for name in files.keys()})
 
     if method == "seq":
         return {name: readers[name](name, path, target_attr, load_range) for name, path in files.items()}

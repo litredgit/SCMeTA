@@ -196,21 +196,40 @@ class Process:
                 self.data[name].mat = combine_peaks(self.data[name].mat, mz_interval=mz_interval)
 
     @use_default_param(["max_ratio"])
-    def denoise(self, max_ratio: float, file_name: str | list[str] | None = None):
+    def find_cells(self, max_ratio: float, file_name: str | list[str] | None = None):
         """
-        Find cell and subtract noise.
-        Args:
-            max_ratio: If ref_mz_intensity > max_ratio * ref_mz_max_intensity, the cell will be extracted
-            file_name: File name, if None, all files will be processed.
+        Find cell positions only.
         """
-        self.logger.info(f"Find cells: ref_mz: {self.ref_mz} > max_ratio: {max_ratio} * max intensity and subtract noise.")
+        self.logger.info(f"Find cells: ref_mz: {self.ref_mz} > max_ratio: {max_ratio} * max intensity.")
         filelist = self.get_filelist(file_name)
+
         for name in filelist:
             ms_data = self.data[name]
             ms_data.cell_pos = find_cell(ms_data.mat, self.ref_mz, max_ratio=max_ratio)
+            self.data[name] = ms_data
+
+    def subtract_noise(self, file_name: str | list[str] | None = None):
+        """
+        Subtract noise based on existing cell positions.
+        """
+        self.logger.info("Subtract noise based on detected cell positions.")
+        filelist = self.get_filelist(file_name)
+
+        for name in filelist:
+            ms_data = self.data[name]
+            if not hasattr(ms_data, "cell_pos") or ms_data.cell_pos is None:
+                raise ValueError(f"cell_pos not found for file {name}, run find_cells first.")
             ms_data.mat = noise_subtract(ms_data.mat, ms_data.cell_pos)
             self.data[name] = ms_data
 
+    @use_default_param(["max_ratio"])
+    def denoise(self, max_ratio: float, file_name: str | list[str] | None = None):
+        """
+        Find cell and subtract noise.
+        """
+        self.find_cells(max_ratio, file_name)
+        self.subtract_noise(file_name)
+            
     @use_default_param(["adjacent"])
     def merge_cell(self, adjacent: int, file_name: str | list[str] | None = None):
         """

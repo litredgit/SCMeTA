@@ -25,6 +25,12 @@ def show_xic(
         else:
             lower, upper = refer_mz - tol, refer_mz + tol
             xic = df[(df["Mass"] >= lower) & (df["Mass"] <= upper)]
+
+        # reindex
+        full_index = range(df.index.min(), df.index.max() + 1)
+        xic = xic.reindex(full_index).fillna(0)
+        xic.index.name = "Scan"
+        
     else:
         # pivoted matrix: index is scan, columns are m/z values (float). When tol provided,
         # sum all columns within the window; otherwise use exact column.

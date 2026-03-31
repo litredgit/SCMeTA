@@ -15,9 +15,8 @@ from SCMeTA.method import (
     convert_format,
     combine_peaks,
 )
-# from SCMeTA.batch import combat_batch_correction
 from SCMeTA.method.fill import fill_mat
-from SCMeTA.file import load_data, load_from_database
+from SCMeTA.file import load_data
 from SCMeTA.config import setup_config, setup_logger
 from SCMeTA.accelerate import MultiProcessing
 from SCMeTA.file.format import SCData
@@ -55,51 +54,28 @@ class Process:
         self,
         path: str,
         log_file: str = '',
-        suffix: str = "auto",
-        target_attr: str = "raw",
-        load_range: tuple[int, int] | None = None,
-        method: str = "mt"
+        target_attr: str = "raw"
     ):
         """
         Add a file to the MSProcess
         Args:
             path: File path to load.
             log_file: Log file path.
-            suffix: target file suffix, default "auto". Options are "raw", "mzml", "csv".
             target_attr: Attribute to load the data, default "raw".
-            load_range: Range of data to load, default None.
-            method: Method to load the data, default "mt". Options are "seq", "mt", "mp".
-        Caution: Only one type of file is supported in parallel mode. That is, when suffix==auto, method must be seq.
         """
         # set up logger
         if log_file == 'data':
             log_file=os.path.dirname(path) + "/scmeta.log"
         self.logger = setup_logger(log_file=log_file)
-        # check suffix
-        if suffix not in ["auto", "raw", "csv", "mzml"]:
-            raise ValueError("Data type not supported.")
         if target_attr not in ["cell_mat", "mat", "process", "raw"]:
             target_attr = "raw"
             self.logger.warning(f"target_attr {target_attr} not supported and will be redirected to \"raw\", choose from (\"raw\", \"process\", \"mat\", \"cell_mat\")")
         # load data
         self.logger.info(f"Load files in path {[path]}.")
-        self.data.update(load_data(path, suffix, target_attr, load_range, method))
+        self.data.update(load_data(path, target_attr))
         self.__dir = os.path.dirname(path)
         if not self.data:
             raise ValueError("No data loaded")
-
-    def load_database(self, file_id: int | list[int]):
-        """
-        Load data from database.
-        Args:
-            file_id: File ID in the database.
-
-        Returns:
-
-        """
-        data = load_from_database(file_id)
-        for key, value in data.items():
-            self.data.update(load_data(value, key, "database"))
 
     def cut(self, file_name: str | list[str] | None = None, ranges: list[list[int, int]] | list[int, int] | None = None, type: str = "cut"):
         """

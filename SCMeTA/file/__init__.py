@@ -1,93 +1,21 @@
-import os
-
-from SCMeTA.accelerate import MultiProcessing
-from SCMeTA.accelerate import MultiThreader
-
-try:
-    from .thermo import load_thermo_data
-except ImportError as e:
-    print(f"Warning: Thermo RawFileReader import failed: {e}")
-from .process import load_process_data
-from .mzML import load_mzML_data
+from .oxion import gen_scdata
 from .format import *
-from .database import load_from_database
 from SCMeTA.tool import check_path
-
-def path_from_database(path: str) -> str:
-    base_path = ".Database/cyesi"
-    return os.path.join(base_path, path)
-
-def read_files_in_parallel(
-        files: dict[str, str],
-        reader: callable,
-        target_attr: str = "raw",
-        load_range: tuple[int, int] | None = None,
-        multi_method: str = "mt"
-) -> dict[str, SCData]:
-    """
-    Read files in parallel using the specified method.
-    """
-    if multi_method == "mp":
-        args = files.copy()
-        args["target_attr"] = target_attr
-        args["load_range"] = load_range
-        mp = MultiProcessing()
-        results = mp.run(func=reader, data=args)
-    elif multi_method == "mt":
-        args = [(name, path, target_attr, load_range) for name, path in files.items()]
-        mt = MultiThreader()
-        results = mt.run(reader, args)
-    else:
-        raise ValueError("Method not found, choose from (\"mp\" or \"mt\")")
-    return results
 
 def load_data(
     path: str | dict,
-    suffix: str = "auto",
-    target_attr: str = "raw", 
-    load_range: tuple[int, int] | None = None, 
-    method: str = "mt"
+    target_attr: str = "raw"
 ) -> dict[str, SCData]:
     """
-    Load data from the given path or database. only support one type of file in parallel mode.
-    Parameters:
-        path (str | dict): The file path or a dictionary of file paths.
-        suffix (str): The suffix of the files to load ("auto", "raw", "csv", "mzml").
-        target_attr (str): The target attribute to load data into.
-        load_range (tuple[int, int] | None): The range of data to load.
-        method (str): The method to use for loading data ("seq", "mt", "mp").
+    Load data from the specified path and return a dictionary of SCData objects.
+    Args:
+        path (str | dict): The path to the data file or a dictionary of file paths.
+        target_attr (str): The attribute name to store the loaded data in the SCData object. Default is "raw".
     Returns:
-        dict[str, SCData]: A dictionary of loaded SCData objects.
+        dict[str, SCData]: A dictionary where the keys are the file names and the values are the corresponding SCData objects containing the loaded data.
     """
-    FUNC_DICT = {
-        "raw": load_thermo_data,
-        "csv": load_process_data,
-        "mzml":load_mzML_data
-    }
+    files = check_path(path, do='r', type=["raw", "mzml"])
+    return {name: gen_scdata(name, path, target_attr) for name, path in files.items()}
 
-    files, readers = {}, {}
-    if suffix == "auto":
-        for dtype in ["raw", "csv", "mzml"]:
-            try:
-                files_dtype=check_path(path, do='r', type=[dtype])
-                files.update(files_dtype)
-                readers.update({name: FUNC_DICT[dtype] for name in files_dtype.keys()})
-            except Exception:
-                pass
-    else:
-        files = check_path(path, do='r', type=[suffix])
-        readers.update({name: FUNC_DICT[suffix] for name in files.keys()})
-
-    if method == "seq":
-        return {name: readers[name](name, path, target_attr, load_range) for name, path in files.items()}
-    else:
-        # only support one type of reader in parallel mode
-        reader = next(iter(readers.values()))
-        return read_files_in_parallel(files, reader, target_attr, load_range, method)
-
-    # elif isinstance(path, dict):
-    #     paths = [path_from_database(path) for path in path.values()]
-    #     results = read_files_in_parallel(path.keys(), paths, target_attr, load_range, method)
-    #     return results
 
 
